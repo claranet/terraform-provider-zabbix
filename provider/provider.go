@@ -1,7 +1,7 @@
 package provider
 
 import (
-	"github.com/dainis/zabbix"
+	"github.com/claranet/go-zabbix-api"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 )
