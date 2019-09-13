@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 )
 
+// Provider define the provider and his resources
 func Provider() terraform.ResourceProvider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{

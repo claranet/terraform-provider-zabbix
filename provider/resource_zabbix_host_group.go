@@ -1,9 +1,10 @@
 package provider
 
 import (
+	"log"
+
 	"github.com/dainis/zabbix"
 	"github.com/hashicorp/terraform/helper/schema"
-	"log"
 )
 
 func resourceZabbixHostGroup() *schema.Resource {
@@ -40,12 +41,12 @@ func resourceZabbixHostGroupCreate(d *schema.ResourceData, meta interface{}) err
 		return err
 	}
 
-	groupId := groups[0].GroupId
+	groupID := groups[0].GroupId
 
-	log.Printf("Created host group, id is %s", groupId)
+	log.Printf("Created host group, id is %s", groupID)
 
-	d.Set("group_id", groupId)
-	d.SetId(groupId)
+	d.Set("group_id", groupID)
+	d.SetId(groupID)
 
 	return nil
 }
