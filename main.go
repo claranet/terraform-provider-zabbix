@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/dainis/terraform-provider-zabbix/provider"
+	"github.com/claranet/terraform-provider-zabbix/provider"
 	"github.com/hashicorp/terraform/plugin"
 )
 

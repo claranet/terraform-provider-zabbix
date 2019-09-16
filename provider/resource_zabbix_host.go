@@ -90,7 +90,7 @@ func resourceZabbixHost() *schema.Resource {
 			"interfaces": &schema.Schema{
 				Type:     schema.TypeList,
 				Elem:     interfaceSchema,
-				Required: false,
+				Required: true,
 				ForceNew: true,
 			},
 			"groups": &schema.Schema{
