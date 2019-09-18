@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/claranet/go-zabbix-api"
@@ -29,11 +28,6 @@ func resourceZabbixItem() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "ID of the host or template that the item belongs to.",
-			},
-			"parent_host": &schema.Schema{
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "Technical name of the host or template that the item belong to.",
 			},
 			"interface_id": &schema.Schema{
 				Type:     schema.TypeString,
@@ -98,34 +92,12 @@ func resourceZabbixItem() *schema.Resource {
 	}
 }
 
-func getItemHostID(d *schema.ResourceData, api *zabbix.API) (string, error) {
-	if d.Get("host_id") != "" {
-		return d.Get("host_id").(string), nil
-	} else if d.Get("parent_host") != "" {
-		hostParams := zabbix.Params{
-			"output": "extend",
-			"filter": map[string]interface{}{
-				"host": d.Get("parent_host").(string),
-			},
-		}
-
-		templates, err := api.TemplatesGet(hostParams)
-		if err != nil {
-			return "", err
-		}
-		if len(templates) != 1 {
-			return "", fmt.Errorf("expected 1 template and got: %d template", len(templates))
-		}
-		return templates[0].TemplateID, nil
-	}
-	return "", fmt.Errorf("host_id or parent_host should be set")
-}
-
 func createItemObject(d *schema.ResourceData, api *zabbix.API) (*zabbix.Item, error) {
 
 	item := zabbix.Item{
 		ItemID:       d.Get("item_id").(string),
 		Delay:        d.Get("delay").(int),
+		HostID:       d.Get("host_id").(string),
 		InterfaceID:  d.Get("interface_id").(string),
 		Key:          d.Get("key").(string),
 		Name:         d.Get("name").(string),
@@ -138,11 +110,6 @@ func createItemObject(d *schema.ResourceData, api *zabbix.API) (*zabbix.Item, er
 		Trends:       d.Get("trends").(string),
 		TrapperHosts: d.Get("trapper_host").(string),
 	}
-	id, err := getItemHostID(d, api)
-	if err != nil {
-		return nil, err
-	}
-	item.HostID = id
 	return &item, nil
 }
 
