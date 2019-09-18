@@ -48,7 +48,7 @@ func resourceZabbixHostGroupCreate(d *schema.ResourceData, meta interface{}) err
 	d.Set("group_id", groupID)
 	d.SetId(groupID)
 
-	return nil
+	return resourceZabbixHostGroupRead(d, meta)
 }
 
 func resourceZabbixHostGroupRead(d *schema.ResourceData, meta interface{}) error {
@@ -75,7 +75,11 @@ func resourceZabbixHostGroupUpdate(d *schema.ResourceData, meta interface{}) err
 		GroupID: d.Id(),
 	}
 
-	return api.HostGroupsUpdate(zabbix.HostGroups{hostGroup})
+	err := api.HostGroupsUpdate(zabbix.HostGroups{hostGroup})
+	if err != nil {
+		return err
+	}
+	return resourceZabbixHostGroupRead(d, meta)
 }
 
 func resourceZabbixHostGroupDelete(d *schema.ResourceData, meta interface{}) error {

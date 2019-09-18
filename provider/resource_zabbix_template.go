@@ -73,7 +73,7 @@ func resourceZabbixTemplateCreate(d *schema.ResourceData, meta interface{}) erro
 	}
 	d.Set("template_id", templates[0].TemplateID)
 	d.SetId(templates[0].TemplateID)
-	return nil
+	return resourceZabbixTemplateRead(d, meta)
 }
 
 func resourceZabbixTemplateRead(d *schema.ResourceData, meta interface{}) error {
@@ -123,7 +123,7 @@ func resourceZabbixTemplateUpdate(d *schema.ResourceData, meta interface{}) erro
 		return err
 	}
 
-	return nil
+	return resourceZabbixTemplateRead(d, meta)
 }
 
 func resourceZabbixTemplateDelete(d *schema.ResourceData, meta interface{}) error {

@@ -327,7 +327,7 @@ func resourceZabbixHostCreate(d *schema.ResourceData, meta interface{}) error {
 	d.Set("host_id", hosts[0].HostID)
 	d.SetId(hosts[0].HostID)
 
-	return nil
+	return resourceZabbixHostRead(d, meta)
 }
 
 func resourceZabbixHostRead(d *schema.ResourceData, meta interface{}) error {
@@ -412,7 +412,7 @@ func resourceZabbixHostUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	log.Printf("Created host id is %s", hosts[0].HostID)
 
-	return nil
+	return resourceZabbixHostRead(d, meta)
 }
 
 func resourceZabbixHostDelete(d *schema.ResourceData, meta interface{}) error {

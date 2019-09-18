@@ -11,8 +11,16 @@ import (
 )
 
 func TestAccZabbixHost_Basic(t *testing.T) {
-	hostName := fmt.Sprintf("host_name_%s", acctest.RandString(5))
-	hostGroup := fmt.Sprintf("host_group_%s", acctest.RandString(5))
+	var getHost zabbix.Host
+	randName := acctest.RandString(5)
+	host := fmt.Sprintf("host_%s", randName)
+	name := fmt.Sprintf("name_%s", randName)
+	hostGroup := fmt.Sprintf("host_group_%s", randName)
+	expectedHost := zabbix.Host{
+		Host:       host,
+		Name:       name,
+		Interfaces: zabbix.HostInterfaces{zabbix.HostInterface{IP: "127.0.0.1", Main: 1}},
+	}
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -20,10 +28,11 @@ func TestAccZabbixHost_Basic(t *testing.T) {
 		CheckDestroy: testAccCheckZabbixHostDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccZabbixHostConfig(hostName, hostGroup),
+				Config: testAccZabbixHostConfig(host, name, hostGroup),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckZabbixHostExit("zabbix_host.zabbix1"),
-					resource.TestCheckResourceAttr("zabbix_host.zabbix1", "host", hostName),
+					testAccCheckZabbixHostExist("zabbix_host.zabbix1", &getHost),
+					testAccCheckZabbixHostAttributes(&getHost, expectedHost, []string{"Linux servers", hostGroup}, []string{"Template ICMP Ping"}),
+					resource.TestCheckResourceAttr("zabbix_host.zabbix1", "host", host),
 				),
 			},
 		},
@@ -50,10 +59,11 @@ func testAccCheckZabbixHostDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testAccZabbixHostConfig(hostName string, hostGroup string) string {
+func testAccZabbixHostConfig(host string, name string, hostGroup string) string {
 	return fmt.Sprintf(`
 	  	resource "zabbix_host" "zabbix1" {
 			host = "%s"
+			name = "%s"
 			interfaces {
 		  		ip = "127.0.0.1"
 				main = true
@@ -64,11 +74,11 @@ func testAccZabbixHostConfig(hostName string, hostGroup string) string {
 	  
 	  	resource "zabbix_host_group" "zabbix" {
 			name = "%s"
-	  	}`, hostName, hostGroup,
+	  	}`, host, name, hostGroup,
 	)
 }
 
-func testAccCheckZabbixHostExit(resource string) resource.TestCheckFunc {
+func testAccCheckZabbixHostExist(resource string, host *zabbix.Host) resource.TestCheckFunc {
 	return func(state *terraform.State) error {
 		rs, ok := state.RootModule().Resources[resource]
 		if !ok {
@@ -79,10 +89,72 @@ func testAccCheckZabbixHostExit(resource string) resource.TestCheckFunc {
 		}
 
 		api := testAccProvider.Meta().(*zabbix.API)
-		_, err := api.HostGetByID(rs.Primary.ID)
+		getHost, err := api.HostGetByID(rs.Primary.ID)
 		if err != nil {
 			return err
 		}
+		*host = *getHost
 		return nil
 	}
+}
+
+func testAccCheckZabbixHostAttributes(host *zabbix.Host, want zabbix.Host, groupNames []string, templateNames []string) resource.TestCheckFunc {
+	return func(state *terraform.State) error {
+		api := testAccProvider.Meta().(*zabbix.API)
+
+		if host.Host != want.Host {
+			return fmt.Errorf("Got host name: %q, expected: %q", host.Host, want.Host)
+		}
+		if host.Name != want.Name {
+			return fmt.Errorf("Got name: %q, expected: %q", host.Name, want.Name)
+		}
+
+		param := zabbix.Params{
+			"output": "extend",
+			"hostids": []string{
+				host.HostID,
+			},
+		}
+		groups, err := api.HostGroupsGet(param)
+		if err != nil {
+			return err
+		}
+		if len(groups) != len(groupNames) {
+			return fmt.Errorf("Got %d groups, but expected %d groups", len(groups), len(groupNames))
+		}
+		for _, groupName := range groupNames {
+			if !containGroup(groups, groupName) {
+				return fmt.Errorf("Group not found: %s", groupName)
+			}
+		}
+
+		templates, err := api.TemplatesGet(param)
+		if err != nil {
+			return err
+		}
+		for _, templateName := range templateNames {
+			if !containTemplate(templates, templateName) {
+				return fmt.Errorf("Template not found : %s", templateName)
+			}
+		}
+		return nil
+	}
+}
+
+func containGroup(groupNames zabbix.HostGroups, name string) bool {
+	for _, group := range groupNames {
+		if name == group.Name {
+			return true
+		}
+	}
+	return false
+}
+
+func containTemplate(templateNames zabbix.Templates, name string) bool {
+	for _, template := range templateNames {
+		if name == template.Name {
+			return true
+		}
+	}
+	return false
 }

@@ -11,8 +11,10 @@ import (
 )
 
 func TestAccZabbixHostGroup_Basic(t *testing.T) {
-
 	groupName := fmt.Sprintf("host_groud_%s", acctest.RandString(5))
+	var hostGroup zabbix.HostGroup
+	expectedHostGroup := zabbix.HostGroup{Name: groupName}
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
@@ -21,7 +23,8 @@ func TestAccZabbixHostGroup_Basic(t *testing.T) {
 			{
 				Config: testAccZabbixHostGroupConfig(groupName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckZabbixHostGroupExist("zabbix_host_group.zabbix"),
+					testAccCheckZabbixHostGroupExist("zabbix_host_group.zabbix", &hostGroup),
+					testAccCheckZabbixHostGroupAttributes(&hostGroup, expectedHostGroup),
 					resource.TestCheckResourceAttr("zabbix_host_group.zabbix", "name", groupName),
 				),
 			},
@@ -57,7 +60,7 @@ func testAccZabbixHostGroupConfig(groupName string) string {
 	)
 }
 
-func testAccCheckZabbixHostGroupExist(resource string) resource.TestCheckFunc {
+func testAccCheckZabbixHostGroupExist(resource string, hostGroup *zabbix.HostGroup) resource.TestCheckFunc {
 	return func(state *terraform.State) error {
 		rs, ok := state.RootModule().Resources[resource]
 		if !ok {
@@ -68,9 +71,19 @@ func testAccCheckZabbixHostGroupExist(resource string) resource.TestCheckFunc {
 		}
 
 		api := testAccProvider.Meta().(*zabbix.API)
-		_, err := api.HostGroupGetByID(rs.Primary.ID)
+		group, err := api.HostGroupGetByID(rs.Primary.ID)
 		if err != nil {
 			return err
+		}
+		*hostGroup = *group
+		return nil
+	}
+}
+
+func testAccCheckZabbixHostGroupAttributes(hostGroup *zabbix.HostGroup, want zabbix.HostGroup) resource.TestCheckFunc {
+	return func(state *terraform.State) error {
+		if hostGroup.Name != want.Name {
+			return fmt.Errorf("got host name : %q, expected : %q", hostGroup.Name, want.Name)
 		}
 		return nil
 	}
