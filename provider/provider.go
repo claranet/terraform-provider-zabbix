@@ -32,6 +32,7 @@ func Provider() terraform.ResourceProvider {
 			"zabbix_host_group": resourceZabbixHostGroup(),
 			"zabbix_item":       resourceZabbixItem(),
 			"zabbix_template":   resourceZabbixTemplate(),
+			"zabbix_trigger":    resourceZabbixTrigger(),
 		},
 
 		ConfigureFunc: providerConfigure,

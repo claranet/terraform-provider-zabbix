@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/claranet/go-zabbix-api"
 	"github.com/hashicorp/terraform/helper/schema"
@@ -58,6 +59,7 @@ func resourceZabbixHost() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceZabbixHostCreate,
 		Read:   resourceZabbixHostRead,
+		Exists: resourceZabbixHostExist,
 		Update: resourceZabbixHostUpdate,
 		Delete: resourceZabbixHostDelete,
 		Schema: map[string]*schema.Schema{
@@ -385,6 +387,19 @@ func resourceZabbixHostRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("groups", groupNames)
 
 	return nil
+}
+
+func resourceZabbixHostExist(d *schema.ResourceData, meta interface{}) (bool, error) {
+	api := meta.(*zabbix.API)
+
+	_, err := api.HostGetByID(d.Id())
+	if err != nil {
+		if strings.Contains(err.Error(), "Expected exactly one result") {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func resourceZabbixHostUpdate(d *schema.ResourceData, meta interface{}) error {

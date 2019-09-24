@@ -1,6 +1,8 @@
 package provider
 
 import (
+	"strings"
+
 	"github.com/claranet/go-zabbix-api"
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -106,6 +108,19 @@ func resourceZabbixTemplateRead(d *schema.ResourceData, meta interface{}) error 
 	}
 	d.Set("groups", groupNames)
 	return nil
+}
+
+func resourceZabbixTemplateExist(d *schema.ResourceData, meta interface{}) (bool, error) {
+	api := meta.(*zabbix.API)
+
+	_, err := api.TemplateGetByID(d.Id())
+	if err != nil {
+		if strings.Contains(err.Error(), "Expected exactly one result") {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func resourceZabbixTemplateUpdate(d *schema.ResourceData, meta interface{}) error {

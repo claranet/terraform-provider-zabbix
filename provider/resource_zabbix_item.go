@@ -2,6 +2,7 @@ package provider
 
 import (
 	"log"
+	"strings"
 
 	"github.com/claranet/go-zabbix-api"
 	"github.com/hashicorp/terraform/helper/schema"
@@ -11,6 +12,7 @@ func resourceZabbixItem() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceZabbixItemCreate,
 		Read:   resourceZabbixItemRead,
+		Exists: resourceZabbixItemExist,
 		Update: resourceZabbixItemUpdate,
 		Delete: resourceZabbixItemDelete,
 
@@ -156,6 +158,20 @@ func resourceZabbixItemRead(d *schema.ResourceData, meta interface{}) error {
 
 	log.Printf("Item name is %s\n", item.Name)
 	return nil
+}
+
+func resourceZabbixItemExist(d *schema.ResourceData, meta interface{}) (bool, error) {
+	api := meta.(*zabbix.API)
+
+	_, err := api.ItemGetByID(d.Id())
+	if err != nil {
+		log.Printf("Item exist error : %s", err.Error())
+		if strings.Contains(err.Error(), "Expected exactly one result") {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func resourceZabbixItemUpdate(d *schema.ResourceData, meta interface{}) error {

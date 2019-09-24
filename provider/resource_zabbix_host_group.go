@@ -2,6 +2,7 @@ package provider
 
 import (
 	"log"
+	"strings"
 
 	"github.com/claranet/go-zabbix-api"
 	"github.com/hashicorp/terraform/helper/schema"
@@ -11,6 +12,7 @@ func resourceZabbixHostGroup() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceZabbixHostGroupCreate,
 		Read:   resourceZabbixHostGroupRead,
+		Exists: resourceZabbixHostGroupExist,
 		Update: resourceZabbixHostGroupUpdate,
 		Delete: resourceZabbixHostGroupDelete,
 		Schema: map[string]*schema.Schema{
@@ -65,6 +67,19 @@ func resourceZabbixHostGroupRead(d *schema.ResourceData, meta interface{}) error
 	d.Set("name", group.Name)
 
 	return nil
+}
+
+func resourceZabbixHostGroupExist(d *schema.ResourceData, meta interface{}) (bool, error) {
+	api := meta.(*zabbix.API)
+
+	_, err := api.HostGroupGetByID(d.Id())
+	if err != nil {
+		if strings.Contains(err.Error(), "Expected exactly one result") {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func resourceZabbixHostGroupUpdate(d *schema.ResourceData, meta interface{}) error {
