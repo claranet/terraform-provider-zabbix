@@ -67,7 +67,7 @@ func testAccCheckZabbixHostGroupExist(resource string, hostGroup *zabbix.HostGro
 			return fmt.Errorf("Not found; %s", resource)
 		}
 		if rs.Primary.ID == "" {
-			return fmt.Errorf("No record ID id set")
+			return fmt.Errorf("No record ID set")
 		}
 
 		api := testAccProvider.Meta().(*zabbix.API)
