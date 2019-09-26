@@ -8,6 +8,17 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
+// TODO
+// TODO
+// TODO
+// TODO
+// TODO
+// TODO
+// TODO
+// TODO
+// TODO
+// Verifie pour les valeur delta & cie si elle sont bien dans le bonne interval
+
 func resourceZabbixItem() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceZabbixItemCreate,
