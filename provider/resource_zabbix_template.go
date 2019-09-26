@@ -1,6 +1,8 @@
 package provider
 
 import (
+	"encoding/json"
+	"log"
 	"strings"
 
 	"github.com/claranet/go-zabbix-api"
@@ -11,6 +13,7 @@ func resourceZabbixTemplate() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceZabbixTemplateCreate,
 		Read:   resourceZabbixTemplateRead,
+		Exists: resourceZabbixTemplateExist,
 		Update: resourceZabbixTemplateUpdate,
 		Delete: resourceZabbixTemplateDelete,
 		Schema: map[string]*schema.Schema{
@@ -38,6 +41,28 @@ func resourceZabbixTemplate() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "Description of the template",
+			},
+			"item": &schema.Schema{
+				Type: schema.TypeSet,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"delay": &schema.Schema{
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"key": &schema.Schema{
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "Item key.",
+						},
+						"name": &schema.Schema{
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "Name of the item.",
+						},
+					},
+				},
+				Optional: true,
 			},
 		},
 	}
@@ -73,6 +98,21 @@ func resourceZabbixTemplateCreate(d *schema.ResourceData, meta interface{}) erro
 	if err != nil {
 		return err
 	}
+
+	items := make(zabbix.Items, d.Get("item.#").(int))
+	itemsTerraform := d.Get("item")
+	for i, item := range itemsTerraform.(*schema.Set).List() {
+		value := item.(map[string]interface{})
+		items[i].Delay = value["delay"].(int)
+		items[i].HostID = templates[0].TemplateID
+		items[i].Key = value["key"].(string)
+		items[i].Name = value["name"].(string)
+	}
+	err = api.ItemsCreate(items)
+	if err != nil {
+		return err
+	}
+
 	d.Set("template_id", templates[0].TemplateID)
 	d.SetId(templates[0].TemplateID)
 	return resourceZabbixTemplateRead(d, meta)
@@ -107,6 +147,28 @@ func resourceZabbixTemplateRead(d *schema.ResourceData, meta interface{}) error 
 		groupNames[i] = g.Name
 	}
 	d.Set("groups", groupNames)
+
+	params2 := zabbix.Params{
+		"output":      "extend",
+		"templateids": d.Id(),
+	}
+	items, err := api.ItemsGet(params2)
+	if err != nil {
+		return err
+	}
+
+	var itemTerraList []interface{}
+	for _, item := range items {
+		itemTerra := map[string]interface{}{}
+
+		str, _ := json.Marshal(item)
+		log.Printf("my item data %s", string(str))
+		itemTerra["delay"] = item.Delay
+		itemTerra["name"] = item.Name
+		itemTerra["key"] = item.Key
+		itemTerraList = append(itemTerraList, itemTerra)
+	}
+	d.Set("item", itemTerraList)
 	return nil
 }
 
@@ -115,6 +177,7 @@ func resourceZabbixTemplateExist(d *schema.ResourceData, meta interface{}) (bool
 
 	_, err := api.TemplateGetByID(d.Id())
 	if err != nil {
+		log.Printf("Template with id %s doesn t exist", d.Id())
 		if strings.Contains(err.Error(), "Expected exactly one result") {
 			return false, nil
 		}
