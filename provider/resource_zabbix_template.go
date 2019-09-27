@@ -3,6 +3,7 @@ package provider
 import (
 	"encoding/json"
 	"log"
+	"strconv"
 	"strings"
 
 	"github.com/claranet/go-zabbix-api"
@@ -46,6 +47,10 @@ func resourceZabbixTemplate() *schema.Resource {
 				Type: schema.TypeSet,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						"item_id": &schema.Schema{
+							Type:     schema.TypeString,
+							Computed: true,
+						},
 						"delay": &schema.Schema{
 							Type:     schema.TypeInt,
 							Required: true,
@@ -63,6 +68,7 @@ func resourceZabbixTemplate() *schema.Resource {
 					},
 				},
 				Optional: true,
+				Set:      getUniqueItemID,
 			},
 		},
 	}
@@ -103,6 +109,7 @@ func resourceZabbixTemplateCreate(d *schema.ResourceData, meta interface{}) erro
 	itemsTerraform := d.Get("item")
 	for i, item := range itemsTerraform.(*schema.Set).List() {
 		value := item.(map[string]interface{})
+		log.Printf("Creating item with name : %s", value["name"])
 		items[i].Delay = value["delay"].(int)
 		items[i].HostID = templates[0].TemplateID
 		items[i].Key = value["key"].(string)
@@ -166,6 +173,7 @@ func resourceZabbixTemplateRead(d *schema.ResourceData, meta interface{}) error 
 		itemTerra["delay"] = item.Delay
 		itemTerra["name"] = item.Name
 		itemTerra["key"] = item.Key
+		itemTerra["item_id"] = item.ItemID
 		itemTerraList = append(itemTerraList, itemTerra)
 	}
 	d.Set("item", itemTerraList)
@@ -208,4 +216,13 @@ func resourceZabbixTemplateDelete(d *schema.ResourceData, meta interface{}) erro
 	api := meta.(*zabbix.API)
 
 	return api.TemplatesDeleteByIds([]string{d.Id()})
+}
+func getUniqueItemID(a interface{}) int {
+	item := a.(map[string]interface{})
+
+	i, err := strconv.Atoi(item["item_id"].(string))
+	if err != nil {
+		return schema.HashString(item["name"].(string))
+	}
+	return i
 }
