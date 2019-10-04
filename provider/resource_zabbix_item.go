@@ -1,23 +1,13 @@
 package provider
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
 	"github.com/claranet/go-zabbix-api"
 	"github.com/hashicorp/terraform/helper/schema"
 )
-
-// TODO
-// TODO
-// TODO
-// TODO
-// TODO
-// TODO
-// TODO
-// TODO
-// TODO
-// Verifie pour les valeur delta & cie si elle sont bien dans le bonne interval
 
 func resourceZabbixItem() *schema.Resource {
 	return &schema.Resource{
@@ -35,11 +25,11 @@ func resourceZabbixItem() *schema.Resource {
 			},
 			"delay": &schema.Schema{
 				Type:     schema.TypeInt,
-				Required: true,
+				Optional: true,
 			},
 			"host_id": &schema.Schema{
 				Type:        schema.TypeString,
-				Optional:    true,
+				Required:    true,
 				Description: "ID of the host or template that the item belongs to.",
 			},
 			"interface_id": &schema.Schema{
@@ -61,22 +51,50 @@ func resourceZabbixItem() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 				Default:  0,
+				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+					v := val.(int)
+					if v < 0 || v > 16 {
+						errs = append(errs, fmt.Errorf("%q, must be between 0 and 16 inclusive, got %d", v))
+					}
+					return
+				},
 			},
 			"value_type": &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
 				Default:  0,
+				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+					v := val.(int)
+					if v < 0 || v > 4 {
+						errs = append(errs, fmt.Errorf("%q, must be between 0 and 4 inclusive, got %d", v))
+					}
+					return
+				},
 			},
 			"data_type": &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
 				Default:  0,
+				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+					v := val.(int)
+					if v < 0 || v > 3 {
+						errs = append(errs, fmt.Errorf("%q, must be between 0 and 3 inclusive, got %d", v))
+					}
+					return
+				},
 			},
 			"delta": &schema.Schema{
 				Type:        schema.TypeInt,
 				Optional:    true,
 				Description: "Value that will be stored. ",
 				Default:     0,
+				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+					v := val.(int)
+					if v < 0 || v > 2 {
+						errs = append(errs, fmt.Errorf("%q, must be between 0 and 2 inclusive, got %d", v))
+					}
+					return
+				},
 			},
 			"description": &schema.Schema{
 				Type:        schema.TypeString,
