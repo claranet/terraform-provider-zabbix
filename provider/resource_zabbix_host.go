@@ -62,6 +62,9 @@ func resourceZabbixHost() *schema.Resource {
 		Exists: resourceZabbixHostExist,
 		Update: resourceZabbixHostUpdate,
 		Delete: resourceZabbixHostDelete,
+		Importer: &schema.ResourceImporter{
+			State: schema.ImportStatePassthrough,
+		},
 		Schema: map[string]*schema.Schema{
 			"host": &schema.Schema{
 				Type:        schema.TypeString,
