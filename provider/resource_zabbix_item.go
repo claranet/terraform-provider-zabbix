@@ -16,7 +16,9 @@ func resourceZabbixItem() *schema.Resource {
 		Exists: resourceZabbixItemExist,
 		Update: resourceZabbixItemUpdate,
 		Delete: resourceZabbixItemDelete,
-
+		Importer: &schema.ResourceImporter{
+			State: schema.ImportStatePassthrough,
+		},
 		Schema: map[string]*schema.Schema{
 			"item_id": &schema.Schema{
 				Type:        schema.TypeString,
@@ -54,7 +56,7 @@ func resourceZabbixItem() *schema.Resource {
 				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 					v := val.(int)
 					if v < 0 || v > 16 {
-						errs = append(errs, fmt.Errorf("%q, must be between 0 and 16 inclusive, got %d", v))
+						errs = append(errs, fmt.Errorf("%q, must be between 0 and 16 inclusive, got %d", key, v))
 					}
 					return
 				},
@@ -66,7 +68,7 @@ func resourceZabbixItem() *schema.Resource {
 				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 					v := val.(int)
 					if v < 0 || v > 4 {
-						errs = append(errs, fmt.Errorf("%q, must be between 0 and 4 inclusive, got %d", v))
+						errs = append(errs, fmt.Errorf("%q, must be between 0 and 4 inclusive, got %d", key, v))
 					}
 					return
 				},
@@ -78,7 +80,7 @@ func resourceZabbixItem() *schema.Resource {
 				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 					v := val.(int)
 					if v < 0 || v > 3 {
-						errs = append(errs, fmt.Errorf("%q, must be between 0 and 3 inclusive, got %d", v))
+						errs = append(errs, fmt.Errorf("%q, must be between 0 and 3 inclusive, got %d", key, v))
 					}
 					return
 				},
@@ -91,7 +93,7 @@ func resourceZabbixItem() *schema.Resource {
 				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 					v := val.(int)
 					if v < 0 || v > 2 {
-						errs = append(errs, fmt.Errorf("%q, must be between 0 and 2 inclusive, got %d", v))
+						errs = append(errs, fmt.Errorf("%q, must be between 0 and 2 inclusive, got %d", key, v))
 					}
 					return
 				},
@@ -180,6 +182,7 @@ func resourceZabbixItemRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("type", item.Type)
 	d.Set("value_type", item.ValueType)
 	d.Set("data_type", item.DataType)
+	d.Set("delta", item.Delta)
 	d.Set("description", item.Description)
 	d.Set("history", item.History)
 	d.Set("trends", item.Trends)
@@ -222,6 +225,5 @@ func resourceZabbixItemUpdate(d *schema.ResourceData, meta interface{}) error {
 
 func resourceZabbixItemDelete(d *schema.ResourceData, meta interface{}) error {
 	api := meta.(*zabbix.API)
-
 	return api.ItemsDeleteByIds([]string{d.Id()})
 }
