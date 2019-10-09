@@ -16,6 +16,9 @@ func resourceZabbixTemplate() *schema.Resource {
 		Exists: resourceZabbixTemplateExist,
 		Update: resourceZabbixTemplateUpdate,
 		Delete: resourceZabbixTemplateDelete,
+		Importer: &schema.ResourceImporter{
+			State: schema.ImportStatePassthrough,
+		},
 		Schema: map[string]*schema.Schema{
 			"template_id": &schema.Schema{
 				Type:        schema.TypeString,
@@ -28,9 +31,10 @@ func resourceZabbixTemplate() *schema.Resource {
 				Description: "Technical name of the template",
 			},
 			"groups": &schema.Schema{
-				Type:     schema.TypeSet,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-				Required: true,
+				Type:        schema.TypeSet,
+				Elem:        &schema.Schema{Type: schema.TypeString},
+				Required:    true,
+				Description: "ID of the Host Group",
 			},
 			"name": &schema.Schema{
 				Type:        schema.TypeString,
@@ -43,9 +47,10 @@ func resourceZabbixTemplate() *schema.Resource {
 				Description: "Description of the template",
 			},
 			"macro": &schema.Schema{
-				Type:     schema.TypeMap,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-				Optional: true,
+				Type:        schema.TypeMap,
+				Elem:        &schema.Schema{Type: schema.TypeString},
+				Optional:    true,
+				Description: "User macros for the template",
 			},
 			"linked_template": &schema.Schema{
 				Type:     schema.TypeSet,
