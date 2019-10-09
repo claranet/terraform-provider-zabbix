@@ -33,6 +33,18 @@ func TestAccZabbixItem_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr("zabbix_item.my_item1", "history", "25"),
 				),
 			},
+			{
+				Config: testAccZabbixItemUpdate(groupName, templateName, itemName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccZabbixItemExist("zabbix_item.my_item1"),
+					resource.TestCheckResourceAttr("zabbix_item.my_item1", "name", fmt.Sprintf("update_%s", itemName)),
+					resource.TestCheckResourceAttr("zabbix_item.my_item1", "key", "update.bilou.bilou"),
+					resource.TestCheckResourceAttr("zabbix_item.my_item1", "delay", "23"),
+					resource.TestCheckResourceAttr("zabbix_item.my_item1", "description", fmt.Sprintf("update description for item : %s", itemName)),
+					resource.TestCheckResourceAttr("zabbix_item.my_item1", "trends", "3"),
+					resource.TestCheckResourceAttr("zabbix_item.my_item1", "history", "2"),
+				),
+			},
 		},
 	})
 }
@@ -57,8 +69,31 @@ func testAccZabbixItemConfig(groupName string, templateName string, itemName str
 			description = "description for item : %s"
 			trends = "300"
 			history = "25"
-			delta = 1
-			type = 2
+			host_id = "${zabbix_template.my_zbx_template.template_id}"
+	  	}
+	`, groupName, templateName, templateName, templateName, itemName, itemName)
+}
+
+func testAccZabbixItemUpdate(groupName string, templateName string, itemName string) string {
+	return fmt.Sprintf(`
+		resource "zabbix_host_group" "zabbix" {
+			name = "%s"
+		}
+
+		resource "zabbix_template" "my_zbx_template" {
+			host = "%s"
+			groups = ["${zabbix_host_group.zabbix.name}"]
+			name = "display name %s"
+			description = "description for template %s"
+	  	}
+	  
+		resource "zabbix_item" "my_item1" {
+			name = "update_%s"
+			key = "update.bilou.bilou"
+			delay = "23"
+			description = "update description for item : %s"
+			trends = "3"
+			history = "2"
 			host_id = "${zabbix_template.my_zbx_template.template_id}"
 	  	}
 	`, groupName, templateName, templateName, templateName, itemName, itemName)
