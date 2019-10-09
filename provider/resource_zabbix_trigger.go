@@ -16,7 +16,9 @@ func resourceZabbixTrigger() *schema.Resource {
 		Exists: resourceZabbixTriggerExist,
 		Update: resourceZabbixTriggerUpdate,
 		Delete: resourceZabbixTriggerDelete,
-
+		Importer: &schema.ResourceImporter{
+			State: schema.ImportStatePassthrough,
+		},
 		Schema: map[string]*schema.Schema{
 			"trigger_id": &schema.Schema{
 				Type:        schema.TypeString,
@@ -42,7 +44,7 @@ func resourceZabbixTrigger() *schema.Resource {
 				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 					v := val.(int)
 					if v < 0 || v > 5 {
-						errs = append(errs, fmt.Errorf("%q, must be between 0 and 5 inclusive, got %d", v))
+						errs = append(errs, fmt.Errorf("%q, must be between 0 and 5 inclusive, got %d", key, v))
 					}
 					return
 				},
@@ -51,6 +53,13 @@ func resourceZabbixTrigger() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 				Default:  0,
+				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+					v := val.(int)
+					if v < 0 || v > 1 {
+						errs = append(errs, fmt.Errorf("%q, must be between 0 and 1 inclusive, got %d", key, v))
+					}
+					return
+				},
 			},
 			"dependencies": &schema.Schema{
 				Type:        schema.TypeSet,
@@ -162,32 +171,26 @@ func createTriggerObj(d *schema.ResourceData) zabbix.Trigger {
 }
 
 func getTriggerExpression(trigger *zabbix.Trigger, api *zabbix.API) error {
-	params := zabbix.Params{
-		"triggerids": trigger.TriggerID,
-	}
-	templates, err := api.TemplatesGet(params)
-	if err != nil {
-		return err
-	}
-	if len(templates) != 1 {
-		return fmt.Errorf("Expected one template and got %d", len(templates))
-	}
-	template := templates[0]
-
 	for _, function := range trigger.Functions {
-		var item *zabbix.Item
+		var item zabbix.Item
 
-		for _, zabbixItem := range trigger.ContainedItems {
-			if zabbixItem.ItemID == function.ItemID {
-				item = &zabbixItem
-				break
-			}
+		items, err := api.ItemsGet(zabbix.Params{
+			"output":      "extend",
+			"selectHosts": "extend",
+			"itemids":     function.ItemID,
+		})
+		if err != nil {
+			return err
 		}
-		if item == nil {
-			return fmt.Errorf("Couldnt find item %s in the item contained by the trigger", function.ItemID)
+		if len(items) != 1 {
+			return fmt.Errorf("Expected one item with id : %s and got : %d", function.ItemID, len(items))
+		}
+		item = items[0]
+		if len(item.ItemParent) != 1 {
+			return fmt.Errorf("Expected one parent host for item with id %s, and got : %d", function.ItemID, len(item.ItemParent))
 		}
 		idstr := fmt.Sprintf("{%s}", function.FunctionID)
-		expendValue := fmt.Sprintf("{%s:%s.%s(%s)}", template.Host, item.Key, function.Function, function.Parameter)
+		expendValue := fmt.Sprintf("{%s:%s.%s(%s)}", item.ItemParent[0].Host, item.Key, function.Function, function.Parameter)
 		trigger.Expression = strings.Replace(trigger.Expression, idstr, expendValue, 1)
 	}
 	return nil
