@@ -28,12 +28,12 @@ func Provider() terraform.ResourceProvider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"zabbix_host":           resourceZabbixHost(),
-			"zabbix_host_group":     resourceZabbixHostGroup(),
-			"zabbix_item":           resourceZabbixItem(),
-			"zabbix_template":       resourceZabbixTemplate(),
-			"zabbix_trigger":        resourceZabbixTrigger(),
-			"zabbix_template_items": resourceZabbixTemplateItem(),
+			"zabbix_host":          resourceZabbixHost(),
+			"zabbix_host_group":    resourceZabbixHostGroup(),
+			"zabbix_item":          resourceZabbixItem(),
+			"zabbix_template":      resourceZabbixTemplate(),
+			"zabbix_trigger":       resourceZabbixTrigger(),
+			"zabbix_template_link": resourceZabbixTemplateLink(),
 		},
 
 		ConfigureFunc: providerConfigure,

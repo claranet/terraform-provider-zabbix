@@ -5,14 +5,13 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
-func resourceZabbixTemplateItem() *schema.Resource {
+func resourceZabbixTemplateLink() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceZabbixTemplateItemCreate,
-		Read:   resourceZabbixTemplateItemRead,
-		Exists: resourceZabbixTemplateItemExist,
-		Update: resourceZabbixTemplateItemUpdate,
-		Delete: resourceZabbixTemplateItemDelete,
-
+		Create: resourceZabbixTemplateLinkCreate,
+		Read:   resourceZabbixTemplateLinkRead,
+		Exists: resourceZabbixTemplateLinkExist,
+		Update: resourceZabbixTemplateLinkUpdate,
+		Delete: resourceZabbixTemplateLinkDelete,
 		Schema: map[string]*schema.Schema{
 			"template_id": &schema.Schema{
 				Type:     schema.TypeString,
@@ -32,15 +31,15 @@ func resourceZabbixTemplateItem() *schema.Resource {
 	}
 }
 
-func resourceZabbixTemplateItemCreate(d *schema.ResourceData, meta interface{}) error {
+func resourceZabbixTemplateLinkCreate(d *schema.ResourceData, meta interface{}) error {
 	d.SetId(randStringNumber(5))
 	return nil
 }
 
-func resourceZabbixTemplateItemRead(d *schema.ResourceData, meta interface{}) error {
+func resourceZabbixTemplateLinkRead(d *schema.ResourceData, meta interface{}) error {
 	api := meta.(*zabbix.API)
 
-	itemsTerraform, err := getTerraformTemplateItems(d, api)
+	itemsTerraform, err := getTerraformTemplateLinks(d, api)
 	if err != nil {
 		return err
 	}
@@ -54,14 +53,14 @@ func resourceZabbixTemplateItemRead(d *schema.ResourceData, meta interface{}) er
 	return nil
 }
 
-func resourceZabbixTemplateItemExist(d *schema.ResourceData, meta interface{}) (bool, error) {
+func resourceZabbixTemplateLinkExist(d *schema.ResourceData, meta interface{}) (bool, error) {
 	return true, nil
 }
 
-func resourceZabbixTemplateItemUpdate(d *schema.ResourceData, meta interface{}) error {
+func resourceZabbixTemplateLinkUpdate(d *schema.ResourceData, meta interface{}) error {
 	api := meta.(*zabbix.API)
 
-	err := updateZabbixTemplateItem(d, api)
+	err := updateZabbixTemplateLink(d, api)
 	if err != nil {
 		return err
 	}
@@ -69,14 +68,14 @@ func resourceZabbixTemplateItemUpdate(d *schema.ResourceData, meta interface{}) 
 	if err != nil {
 		return err
 	}
-	return resourceZabbixTemplateItemRead(d, meta)
+	return resourceZabbixTemplateLinkRead(d, meta)
 }
 
-func resourceZabbixTemplateItemDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceZabbixTemplateLinkDelete(d *schema.ResourceData, meta interface{}) error {
 	return nil
 }
 
-func getTerraformTemplateItems(d *schema.ResourceData, api *zabbix.API) ([]string, error) {
+func getTerraformTemplateLinks(d *schema.ResourceData, api *zabbix.API) ([]string, error) {
 	params := zabbix.Params{
 		"output": "extend",
 		"templateids": []string{
@@ -114,7 +113,7 @@ func getTerraformTemplateTriggers(d *schema.ResourceData, api *zabbix.API) ([]st
 	return TriggersTerraform, nil
 }
 
-func updateZabbixTemplateItem(d *schema.ResourceData, api *zabbix.API) error {
+func updateZabbixTemplateLink(d *schema.ResourceData, api *zabbix.API) error {
 	localItems := d.Get("item").(*schema.Set)
 
 	params := zabbix.Params{
