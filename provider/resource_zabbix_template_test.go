@@ -45,6 +45,86 @@ func TestAccZabbixTemplate_Basic(t *testing.T) {
 	})
 }
 
+func TestAccZabbixTemplate_UserMacro(t *testing.T) {
+	resourceName := "zabbix_template.template_test"
+	strID := acctest.RandString(5)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckZabbixTemplateDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccZabbixTemplateUserMacro(strID),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "host", fmt.Sprintf("template_%s", strID)),
+					resource.TestCheckResourceAttr(resourceName, "macro.%", "1"),
+					resource.TestCheckResourceAttr(resourceName, "macro.MYMACRO1", "value1"),
+				),
+			},
+			{
+				Config: testAccZabbixTemplateUserMacroAdd(strID),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "host", fmt.Sprintf("template_%s", strID)),
+					resource.TestCheckResourceAttr(resourceName, "macro.%", "2"),
+					resource.TestCheckResourceAttr(resourceName, "macro.MYMACRO1", "value1"),
+					resource.TestCheckResourceAttr(resourceName, "macro.MYMACRO2", "value2"),
+				),
+			},
+			{
+				Config: testAccZabbixTemplateUserMacroUpdate(strID),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "host", fmt.Sprintf("template_%s", strID)),
+					resource.TestCheckResourceAttr(resourceName, "macro.%", "2"),
+					resource.TestCheckResourceAttr(resourceName, "macro.MYMACRO1", "value3"),
+					resource.TestCheckResourceAttr(resourceName, "macro.MYMACRO3", "value2"),
+				),
+			},
+			{
+				Config: testAccZabbixTemplateUserMacroDelete(strID),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "host", fmt.Sprintf("template_%s", strID)),
+					resource.TestCheckResourceAttr(resourceName, "macro.%", "0"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccZabbixTemplate_linkedTempalte(t *testing.T) {
+	resource1Name := "zabbix_template.template_test_1"
+	resource2Name := "zabbix_template.template_test_2"
+	strID := acctest.RandString(5)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckZabbixTemplateDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccZabbixTemplateLinkedTemplate(strID),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resource1Name, "host", fmt.Sprintf("template_%s_1", strID)),
+					resource.TestCheckResourceAttr(resource1Name, "groups.#", "1"),
+					resource.TestCheckResourceAttr(resource2Name, "host", fmt.Sprintf("template_%s_2", strID)),
+					resource.TestCheckResourceAttr(resource2Name, "groups.#", "1"),
+					resource.TestCheckResourceAttr(resource2Name, "linked_template.#", "1"),
+				),
+			},
+			{
+				Config: testAccZabbixTemplateLinkedTemplateDelete(strID),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resource1Name, "host", fmt.Sprintf("template_%s_1", strID)),
+					resource.TestCheckResourceAttr(resource1Name, "groups.#", "1"),
+					resource.TestCheckResourceAttr(resource2Name, "host", fmt.Sprintf("template_%s_2", strID)),
+					resource.TestCheckResourceAttr(resource2Name, "groups.#", "1"),
+					resource.TestCheckResourceAttr(resource2Name, "linked_template.#", "0"),
+				),
+			},
+		},
+	})
+}
+
 func testAccCheckZabbixTemplateDestroy(s *terraform.State) error {
 	api := testAccProvider.Meta().(*zabbix.API)
 
@@ -103,4 +183,105 @@ func testAccZabbixTemplateSimpleUpdate(strID string) string {
 		}
 	}
 	`, strID, strID, strID)
+}
+
+func testAccZabbixTemplateLinkedTemplate(strID string) string {
+	return fmt.Sprintf(`
+	resource "zabbix_host_group" "host_group_test" {
+		name = "host_group_%s"
+	}
+
+	resource "zabbix_template" "template_test_1" {
+		host = "template_%s_1"
+		groups = ["${zabbix_host_group.host_group_test.name}"]
+	}
+
+	resource "zabbix_template" "template_test_2" {
+		host = "template_%s_2"
+		groups = ["${zabbix_host_group.host_group_test.name}"]
+		linked_template = ["${zabbix_template.template_test_1.id}"]
+	}
+	`, strID, strID, strID)
+}
+
+func testAccZabbixTemplateLinkedTemplateDelete(strID string) string {
+	return fmt.Sprintf(`
+	resource "zabbix_host_group" "host_group_test" {
+		name = "host_group_%s"
+	}
+
+	resource "zabbix_template" "template_test_1" {
+		host = "template_%s_1"
+		groups = ["${zabbix_host_group.host_group_test.name}"]
+	}
+
+	resource "zabbix_template" "template_test_2" {
+		host = "template_%s_2"
+		groups = ["${zabbix_host_group.host_group_test.name}"]
+		linked_template = []
+	}
+	`, strID, strID, strID)
+}
+
+func testAccZabbixTemplateUserMacro(strID string) string {
+	return fmt.Sprintf(`
+	resource "zabbix_host_group" "host_group_test" {
+		name = "host_group_%s"
+	}
+
+	resource "zabbix_template" "template_test" {
+		host = "template_%s"
+		groups = ["${zabbix_host_group.host_group_test.name}"]
+		macro = {
+			MYMACRO1 = "value1"
+		}
+	}
+	`, strID, strID)
+}
+
+func testAccZabbixTemplateUserMacroAdd(strID string) string {
+	return fmt.Sprintf(`
+	resource "zabbix_host_group" "host_group_test" {
+		name = "host_group_%s"
+	}
+
+	resource "zabbix_template" "template_test" {
+		host = "template_%s"
+		groups = ["${zabbix_host_group.host_group_test.name}"]
+		macro = {
+			MYMACRO1 = "value1"
+			MYMACRO2 = "value2"
+		}
+	}
+	`, strID, strID)
+}
+
+func testAccZabbixTemplateUserMacroUpdate(strID string) string {
+	return fmt.Sprintf(`
+	resource "zabbix_host_group" "host_group_test" {
+		name = "host_group_%s"
+	}
+
+	resource "zabbix_template" "template_test" {
+		host = "template_%s"
+		groups = ["${zabbix_host_group.host_group_test.name}"]
+		macro = {
+			MYMACRO1 = "value3"
+			MYMACRO3 = "value2"
+		}
+	}
+	`, strID, strID)
+}
+
+func testAccZabbixTemplateUserMacroDelete(strID string) string {
+	return fmt.Sprintf(`
+	resource "zabbix_host_group" "host_group_test" {
+		name = "host_group_%s"
+	}
+
+	resource "zabbix_template" "template_test" {
+		host = "template_%s"
+		groups = ["${zabbix_host_group.host_group_test.name}"]
+	}
+	`, strID, strID)
 }
