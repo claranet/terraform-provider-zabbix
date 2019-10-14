@@ -120,6 +120,9 @@ func createTemplateObj(d *schema.ResourceData, api *zabbix.API) (*zabbix.Templat
 	for i, ID := range hostGroupIDs {
 		template.Groups[i].GroupID = ID.GroupID
 	}
+	if template.UserMacros == nil {
+		template.UserMacros = zabbix.Macros{}
+	}
 	return &template, nil
 }
 
@@ -199,6 +202,7 @@ func resourceZabbixTemplateUpdate(d *schema.ResourceData, meta interface{}) erro
 	if err != nil {
 		return err
 	}
+	template.TemplatesClear = getUnlinkedTemplate(d)
 	template.TemplateID = d.Id()
 	templates := zabbix.Templates{*template}
 
@@ -218,7 +222,7 @@ func resourceZabbixTemplateDelete(d *schema.ResourceData, meta interface{}) erro
 
 func createTerraformMacro(template zabbix.Template) (map[string]interface{}, error) {
 	terraformMacros := make(map[string]interface{}, len(template.UserMacros))
-	log.Printf("size %d", len(template.UserMacros))
+
 	for _, macro := range template.UserMacros {
 		var name string
 		if noPrefix := strings.Split(macro.MacroName, "{$"); len(noPrefix) == 2 {
@@ -229,8 +233,7 @@ func createTerraformMacro(template zabbix.Template) (map[string]interface{}, err
 		if noSuffix := strings.Split(name, "}"); len(noSuffix) == 2 {
 			name = noSuffix[0]
 		} else {
-			return nil, fmt.Errorf("ll Invalid macro name \"%s\"", macro.MacroName)
-
+			return nil, fmt.Errorf("Invalid macro name \"%s\"", macro.MacroName)
 		}
 		terraformMacros[name] = macro.Value
 	}
@@ -273,4 +276,24 @@ func createTerraformLinkedHost(template zabbix.Template) []string {
 		terraformHosts = append(terraformHosts, linkedHost)
 	}
 	return terraformHosts
+}
+
+func getUnlinkedTemplate(d *schema.ResourceData) zabbix.Templates {
+	before, after := d.GetChange("linked_template")
+	beforeID := before.(*schema.Set).List()
+	afterID := after.(*schema.Set).List()
+	var unlinkID zabbix.Templates
+
+	for _, l := range beforeID {
+		present := false
+		for _, k := range afterID {
+			if l == k {
+				present = true
+			}
+		}
+		if !present {
+			unlinkID = append(unlinkID, zabbix.Template{TemplateID: l.(string)})
+		}
+	}
+	return unlinkID
 }
