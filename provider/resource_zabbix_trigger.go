@@ -144,7 +144,33 @@ func resourceZabbixTriggerUpdate(d *schema.ResourceData, meta interface{}) error
 
 func resourceZabbixTriggerDelete(d *schema.ResourceData, meta interface{}) error {
 	api := meta.(*zabbix.API)
-	return api.TriggersDeleteByIds([]string{d.Id()})
+
+	triggers, err := api.TriggersGet(zabbix.Params{
+		"ouput":       "extend",
+		"selectHosts": "extend",
+		"triggerids":  d.Id(),
+	})
+	if err != nil {
+		return fmt.Errorf("%s, with trigger %s", err.Error(), d.Id())
+	}
+	if len(triggers) != 1 {
+		return fmt.Errorf("Expected one item and got %d items", len(triggers))
+	}
+	trigger := triggers[0]
+
+	templates, err := api.TemplatesGet(zabbix.Params{
+		"output":            "extend",
+		"parentTemplateids": trigger.TriggerParent[0].HostID,
+	})
+
+	triggerids, err := api.TriggersDeleteNoError([]string{d.Id()})
+	if err != nil {
+		return fmt.Errorf("%s, with trigger %s", err.Error(), d.Id())
+	}
+	if len(triggerids) != len(templates)+1 {
+		return fmt.Errorf("Expected to delete %d trigger and %d were delete", len(templates)+1, len(triggerids))
+	}
+	return nil
 }
 
 func createTriggerDependencies(d *schema.ResourceData) zabbix.Triggers {
