@@ -225,5 +225,31 @@ func resourceZabbixItemUpdate(d *schema.ResourceData, meta interface{}) error {
 
 func resourceZabbixItemDelete(d *schema.ResourceData, meta interface{}) error {
 	api := meta.(*zabbix.API)
-	return api.ItemsDeleteByIds([]string{d.Id()})
+
+	items, err := api.ItemsGet(zabbix.Params{
+		"output":      "extend",
+		"selectHosts": "extend",
+		"itemids":     d.Id(),
+	})
+	if err != nil {
+		return fmt.Errorf("%s, with item %s", err.Error(), d.Id())
+	}
+	if len(items) != 1 {
+		return fmt.Errorf("Expected one item and got %d items", len(items))
+	}
+	item := items[0]
+
+	templates, err := api.TemplatesGet(zabbix.Params{
+		"ouput":             "extend",
+		"parentTemplateids": item.ItemParent[0].HostID,
+	})
+
+	itemids, err := api.ItemsDeleteNoError([]string{d.Id()})
+	if err != nil {
+		return err
+	}
+	if len(itemids) != len(templates)+1 {
+		return fmt.Errorf("Expected to delete %d item and %d were delete", len(templates)+1, len(itemids))
+	}
+	return nil
 }
