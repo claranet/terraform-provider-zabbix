@@ -1,6 +1,9 @@
 package provider
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/claranet/go-zabbix-api"
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -12,6 +15,18 @@ func resourceZabbixTemplateLink() *schema.Resource {
 		Exists: resourceZabbixTemplateLinkExist,
 		Update: resourceZabbixTemplateLinkUpdate,
 		Delete: resourceZabbixTemplateLinkDelete,
+		Importer: &schema.ResourceImporter{
+			State: func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+				templateID, itemsID, triggersID, err := resourceZabbixTemplateLinkParseID(d.Id())
+				if err != nil {
+					return nil, err
+				}
+				d.Set("item", itemsID)
+				d.Set("trigger", triggersID)
+				d.Set("template_id", templateID)
+				d.SetId(randStringNumber(5))
+				return []*schema.ResourceData{d}, nil
+			}},
 		Schema: map[string]*schema.Schema{
 			"template_id": &schema.Schema{
 				Type:     schema.TypeString,
@@ -39,7 +54,7 @@ func resourceZabbixTemplateLinkCreate(d *schema.ResourceData, meta interface{}) 
 func resourceZabbixTemplateLinkRead(d *schema.ResourceData, meta interface{}) error {
 	api := meta.(*zabbix.API)
 
-	itemsTerraform, err := getTerraformTemplateLinks(d, api)
+	itemsTerraform, err := getTerraformTemplateItems(d, api)
 	if err != nil {
 		return err
 	}
@@ -60,7 +75,7 @@ func resourceZabbixTemplateLinkExist(d *schema.ResourceData, meta interface{}) (
 func resourceZabbixTemplateLinkUpdate(d *schema.ResourceData, meta interface{}) error {
 	api := meta.(*zabbix.API)
 
-	err := updateZabbixTemplateLink(d, api)
+	err := updateZabbixTemplateItem(d, api)
 	if err != nil {
 		return err
 	}
@@ -75,12 +90,13 @@ func resourceZabbixTemplateLinkDelete(d *schema.ResourceData, meta interface{}) 
 	return nil
 }
 
-func getTerraformTemplateLinks(d *schema.ResourceData, api *zabbix.API) ([]string, error) {
+func getTerraformTemplateItems(d *schema.ResourceData, api *zabbix.API) ([]string, error) {
 	params := zabbix.Params{
 		"output": "extend",
 		"templateids": []string{
 			d.Get("template_id").(string),
 		},
+		"inherited": false,
 	}
 	items, err := api.ItemsGet(params)
 	if err != nil {
@@ -100,6 +116,7 @@ func getTerraformTemplateTriggers(d *schema.ResourceData, api *zabbix.API) ([]st
 		"templateids": []string{
 			d.Get("template_id").(string),
 		},
+		"inherited": false,
 	}
 	triggers, err := api.TriggersGet(params)
 	if err != nil {
@@ -113,7 +130,7 @@ func getTerraformTemplateTriggers(d *schema.ResourceData, api *zabbix.API) ([]st
 	return TriggersTerraform, nil
 }
 
-func updateZabbixTemplateLink(d *schema.ResourceData, api *zabbix.API) error {
+func updateZabbixTemplateItem(d *schema.ResourceData, api *zabbix.API) error {
 	localItems := d.Get("item").(*schema.Set)
 
 	params := zabbix.Params{
@@ -121,6 +138,7 @@ func updateZabbixTemplateLink(d *schema.ResourceData, api *zabbix.API) error {
 		"templateids": []string{
 			d.Get("template_id").(string),
 		},
+		"inherited": false,
 	}
 	serverItems, err := api.ItemsGet(params)
 	if err != nil {
@@ -154,6 +172,7 @@ func updateZabbixTemplateTrigger(d *schema.ResourceData, api *zabbix.API) error 
 		"templateids": []string{
 			d.Get("template_id").(string),
 		},
+		"inherited": false,
 	}
 	serverTriggers, err := api.TriggersGet(params)
 	if err != nil {
@@ -177,4 +196,17 @@ func updateZabbixTemplateTrigger(d *schema.ResourceData, api *zabbix.API) error 
 		}
 	}
 	return nil
+}
+
+func resourceZabbixTemplateLinkParseID(ID string) (templateID string, itemID []string, triggerID []string, err error) {
+	parseID := strings.Split(ID, "_")
+	if len(parseID) != 3 {
+		err = fmt.Errorf(`Expected id format TEMPLATEID_ITEMID_TRIGGERID,
+		if you have multiple ITEMID and TRIGGERID use "." to separate the id`)
+		return
+	}
+	templateID = parseID[0]
+	itemID = strings.Split(parseID[1], ".")
+	triggerID = strings.Split(parseID[2], ".")
+	return
 }
