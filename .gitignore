@@ -2,3 +2,5 @@
 /release
 /build
 /vendor
+examples/*/terraform.tfvars
+examples/*/.terraform

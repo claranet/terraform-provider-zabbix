@@ -1,6 +1,6 @@
 provider "zabbix" {
-  user = "${var.user}"
-  password = "${var.password}"
+  user = var.user
+  password = var.password
   server_url = "http://localhost/api_jsonrpc.php" 
 }
 
@@ -12,7 +12,7 @@ resource "zabbix_template" "demo_template" {
   host = "template"
   name = "template demo"
   description = "An exemple of template with item and trigger"
-  groups = ["${zabbix_host_group.demo_group.name}"]
+  groups = [zabbix_host_group.demo_group.name]
   macro = {
       MACRO_TEMPLATE = "12"
   }
@@ -25,7 +25,7 @@ resource "zabbix_item" "demo_item" {
   description = "Item for the demo template"
   trends = "300"
   history = "25"
-  host_id = "${zabbix_template.demo_template.template_id}"
+  host_id = zabbix_template.demo_template.template_id
 }
 
 resource "zabbix_trigger" "demo_trigger" {
