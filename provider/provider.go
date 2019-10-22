@@ -1,7 +1,10 @@
 package provider
 
 import (
+	"net/http"
+
 	"github.com/claranet/go-zabbix-api"
+	"github.com/hashicorp/terraform/helper/logging"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 )
@@ -41,6 +44,12 @@ func Provider() terraform.ResourceProvider {
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	api := zabbix.NewAPI(d.Get("server_url").(string))
+
+	if logging.IsDebugOrHigher() {
+		httpClient := http.Client{}
+		httpClient.Transport = logging.NewTransport("Zabbix", http.DefaultTransport)
+		api.SetClient(&httpClient)
+	}
 
 	if _, err := api.Login(d.Get("user").(string), d.Get("password").(string)); err != nil {
 		return nil, err
