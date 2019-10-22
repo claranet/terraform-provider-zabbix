@@ -135,6 +135,9 @@ func resourceZabbixTriggerUpdate(d *schema.ResourceData, meta interface{}) error
 	api := meta.(*zabbix.API)
 
 	triggers := zabbix.Triggers{createTriggerObj(d)}
+	if !d.HasChange("dependencies") {
+		triggers[0].Dependencies = nil
+	}
 	err := api.TriggersUpdate(triggers)
 	if err != nil {
 		return err
