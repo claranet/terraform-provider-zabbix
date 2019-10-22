@@ -133,7 +133,7 @@ func testAccCheckZabbixTemplateDestroy(s *terraform.State) error {
 			continue
 		}
 
-		_, err := api.ItemGetByID(rs.Primary.ID)
+		_, err := api.TemplateGetByID(rs.Primary.ID)
 		if err == nil {
 			return fmt.Errorf("Item still exist %s", rs.Primary.ID)
 		}
