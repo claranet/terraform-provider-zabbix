@@ -29,18 +29,6 @@ func init() {
 }
 
 func testAccPreCheck(t *testing.T) {
-	if v := os.Getenv("TEST_ZABBIX_URL"); v == "" {
-		t.Fatal("TEST_ZABBIX_URL must be set for acceptance tests")
-	}
-	if v := os.Getenv("TEST_ZABBIX_USER"); v == "" {
-		t.Fatal("TEST_ZABBIX_USER must be set for acceptance tests")
-	}
-	if v := os.Getenv("TEST_ZABBIX_PASSWORD"); v == "" {
-		t.Fatal("TEST_ZABBIX_PASSWORD must be set for acceptance tests")
-	}
-	if v := os.Getenv("TEST_ZABBIX_VERBOSE"); v == "" {
-		t.Fatal("TEST_ZABBIX_VERBOSE must be set for acceptance tests")
-	}
 	if v := os.Getenv("ZABBIX_SERVER_URL"); v == "" {
 		t.Fatal("ZABBIX_SERVER_URL must be set for acceptance tests")
 	}
