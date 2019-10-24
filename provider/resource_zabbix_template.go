@@ -42,33 +42,42 @@ func resourceZabbixTemplate() *schema.Resource {
 				Description: "Description of the template",
 			},
 			"item": &schema.Schema{
-				Type: schema.TypeList,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"item_id": &schema.Schema{
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"delay": &schema.Schema{
-							Type:     schema.TypeInt,
-							Required: true,
-						},
-						"key": &schema.Schema{
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "Item key.",
-						},
-						"name": &schema.Schema{
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "Name of the item.",
-						},
-					},
-				},
+				Type:     schema.TypeSet,
+				Elem:     schemaTemplateItem(),
+				Set:      hashTemplateItem(),
 				Optional: true,
 			},
 		},
 	}
+}
+
+func schemaTemplateItem() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"item_id": &schema.Schema{
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"delay": &schema.Schema{
+				Type:     schema.TypeInt,
+				Required: true,
+			},
+			"key": &schema.Schema{
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "Item key.",
+			},
+			"name": &schema.Schema{
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "Name of the item.",
+			},
+		},
+	}
+}
+
+func hashTemplateItem() schema.SchemaSetFunc {
+	return schema.HashResource(schemaTemplateItem())
 }
 
 func createTemplateObj(d *schema.ResourceData, api *zabbix.API) (*zabbix.Template, error) {
@@ -102,7 +111,7 @@ func resourceZabbixTemplateCreate(d *schema.ResourceData, meta interface{}) erro
 	}
 
 	items := make(zabbix.Items, d.Get("item.#").(int))
-	itemsTerraform := d.Get("item").([]interface{})
+	itemsTerraform := d.Get("item").(*schema.Set).List()
 	for i, item := range itemsTerraform {
 		value := item.(map[string]interface{})
 		log.Printf("[DEBUG] Creating item: %#v", value["name"])
@@ -166,7 +175,7 @@ func resourceZabbixTemplateRead(d *schema.ResourceData, meta interface{}) error 
 		itemTerra["item_id"] = item.ItemID
 		itemTerraList[i] = itemTerra
 	}
-	if err := d.Set("item", itemTerraList); err != nil {
+	if err := d.Set("item", schema.NewSet(hashTemplateItem(), itemTerraList)); err != nil {
 		return err
 	}
 
@@ -203,8 +212,8 @@ func resourceZabbixTemplateUpdate(d *schema.ResourceData, meta interface{}) erro
 	if d.HasChange("item") {
 		log.Printf("[TRACE] template.item has changes")
 		oldV, newV := d.GetChange("item")
-		oldItemsTerraform := oldV.([]interface{})
-		newItemsTerraform := newV.([]interface{})
+		oldItemsTerraform := oldV.(*schema.Set).List()
+		newItemsTerraform := newV.(*schema.Set).List()
 		createdItems := zabbix.Items{}
 		updatedItems := zabbix.Items{}
 		deletedItems := zabbix.Items{}
