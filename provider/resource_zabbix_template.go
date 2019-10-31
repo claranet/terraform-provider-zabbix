@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
@@ -232,7 +233,11 @@ func resourceZabbixTemplateRead(d *schema.ResourceData, meta interface{}) error 
 	}
 
 	triggers, err := api.TriggersGet(zabbix.Params{
-		"templateids": []string{d.Id()},
+		"output":             "extend",
+		"selectDependencies": "extend",
+		"selectFunctions":    "extend",
+		"selectItems":        "extend",
+		"templateids":        []string{d.Id()},
 	})
 	if err != nil {
 		return err
@@ -242,13 +247,16 @@ func resourceZabbixTemplateRead(d *schema.ResourceData, meta interface{}) error 
 	for _, trigger := range triggers {
 		triggerTerraform := make(map[string]interface{})
 
+		if err := getTriggerExpression(&trigger, api); err != nil {
+			return err
+		}
 		log.Printf("[DEBUG] Trigger data %#v", trigger)
 		triggerTerraform["trigger_id"] = trigger.TriggerID
 		triggerTerraform["description"] = trigger.Description
 		triggerTerraform["expression"] = trigger.Expression
-		triggerTerraform["comments"] = trigger.Comments
-		triggerTerraform["priority"] = trigger.Priority
-		triggerTerraform["status"] = trigger.Status
+		triggerTerraform["comment"] = trigger.Comments
+		triggerTerraform["priority"] = int(trigger.Priority)
+		triggerTerraform["status"] = int(trigger.Status)
 		triggersTerraform = append(triggersTerraform, triggerTerraform)
 	}
 	if err := d.Set("trigger", schema.NewSet(hashTemplateTrigger(), triggersTerraform)); err != nil {
@@ -430,9 +438,9 @@ func resourceZabbixTemplateUpdate(d *schema.ResourceData, meta interface{}) erro
 			}
 
 			// New item not marked is considered created
-			if !marked[trigger.TriggerID] {
+			if !marked[trigger.Description] {
 				log.Printf("[DEBUG] Marked trigger for creation: %#v", trigger)
-				createdTriggers = append(createdTriggers)
+				createdTriggers = append(createdTriggers, trigger)
 			}
 		}
 
@@ -453,22 +461,22 @@ func resourceZabbixTemplateUpdate(d *schema.ResourceData, meta interface{}) erro
 		}
 
 		if len(createdTriggers) > 0 {
-			err := api.TriggersCreate(createdTriggers)
-			if err != nil {
+			log.Printf("[DEBUG] Trigger to create: %#v", createdTriggers)
+			if err := api.TriggersCreate(createdTriggers); err != nil {
 				return err
 			}
 		}
 
 		if len(updatedTriggers) > 0 {
-			err := api.TriggersUpdate(updatedTriggers)
-			if err != nil {
+			log.Printf("[DEBUG] Trigger to updatet: %#v", updatedTriggers)
+			if err := api.TriggersUpdate(updatedTriggers); err != nil {
 				return err
 			}
 		}
 
 		if len(deletedTriggers) > 0 {
-			err := api.TriggersDelete(deletedTriggers)
-			if err != nil {
+			log.Printf("[DEBUG] Trigger to delete: %#v", deletedTriggers)
+			if err := api.TriggersDelete(deletedTriggers); err != nil {
 				return err
 			}
 		}
@@ -487,6 +495,9 @@ func createTemplateTrigger(d *schema.ResourceData, api *zabbix.API) error {
 	terraformTriggers := d.Get("trigger").(*schema.Set).List()
 	createdTriggers := zabbix.Triggers{}
 
+	if len(terraformTriggers) == 0 {
+		return nil
+	}
 	for _, terraformTrigger := range terraformTriggers {
 		value := terraformTrigger.(map[string]interface{})
 		trigger := zabbix.Trigger{
@@ -499,4 +510,30 @@ func createTemplateTrigger(d *schema.ResourceData, api *zabbix.API) error {
 		createdTriggers = append(createdTriggers, trigger)
 	}
 	return api.TriggersCreate(createdTriggers)
+}
+
+func getTriggerExpression(trigger *zabbix.Trigger, api *zabbix.API) error {
+	for _, function := range trigger.Functions {
+		var item zabbix.Item
+
+		items, err := api.ItemsGet(zabbix.Params{
+			"output":      "extend",
+			"selectHosts": "extend",
+			"itemids":     function.ItemID,
+		})
+		if err != nil {
+			return err
+		}
+		if len(items) != 1 {
+			return fmt.Errorf("Expected one item with id : %s and got : %d", function.ItemID, len(items))
+		}
+		item = items[0]
+		if len(item.ItemParent) != 1 {
+			return fmt.Errorf("Expected one parent host for item with id %s, and got : %d", function.ItemID, len(item.ItemParent))
+		}
+		idstr := fmt.Sprintf("{%s}", function.FunctionID)
+		expendValue := fmt.Sprintf("{%s:%s.%s(%s)}", item.ItemParent[0].Host, item.Key, function.Function, function.Parameter)
+		trigger.Expression = strings.Replace(trigger.Expression, idstr, expendValue, 1)
+	}
+	return nil
 }
