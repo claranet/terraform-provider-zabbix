@@ -47,6 +47,12 @@ func resourceZabbixTemplate() *schema.Resource {
 				Set:      hashTemplateItem(),
 				Optional: true,
 			},
+			"trigger": &schema.Schema{
+				Type:     schema.TypeSet,
+				Elem:     schemaTemplateTrigger(),
+				Set:      hashTemplateTrigger(),
+				Optional: true,
+			},
 		},
 	}
 }
@@ -76,8 +82,46 @@ func schemaTemplateItem() *schema.Resource {
 	}
 }
 
+func schemaTemplateTrigger() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"trigger_id": &schema.Schema{
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "(readonly) ID of the trigger",
+			},
+			"description": &schema.Schema{
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"expression": &schema.Schema{
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"comment": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"priority": &schema.Schema{
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  0,
+			},
+			"status": &schema.Schema{
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  0,
+			},
+		},
+	}
+}
+
 func hashTemplateItem() schema.SchemaSetFunc {
 	return schema.HashResource(schemaTemplateItem())
+}
+
+func hashTemplateTrigger() schema.SchemaSetFunc {
+	return schema.HashResource(schemaTemplateTrigger())
 }
 
 func createTemplateObj(d *schema.ResourceData, api *zabbix.API) (*zabbix.Template, error) {
@@ -125,6 +169,10 @@ func resourceZabbixTemplateCreate(d *schema.ResourceData, meta interface{}) erro
 		return err
 	}
 
+	if err := createTemplateTrigger(d, api); err != nil {
+		return err
+	}
+
 	d.Set("template_id", templates[0].TemplateID)
 	d.SetId(templates[0].TemplateID)
 	return resourceZabbixTemplateRead(d, meta)
@@ -139,7 +187,11 @@ func resourceZabbixTemplateRead(d *schema.ResourceData, meta interface{}) error 
 	}
 
 	d.Set("host", template.Host)
-	d.Set("name", template.Name)
+	if template.Name == template.Host && d.Get("name").(string) == "" { // Zabbix use template host as name if name field is empty
+		d.Set("name", "")
+	} else {
+		d.Set("name", template.Name)
+	}
 	d.Set("description", template.Description)
 
 	groups, err := api.HostGroupsGet(zabbix.Params{
@@ -176,6 +228,30 @@ func resourceZabbixTemplateRead(d *schema.ResourceData, meta interface{}) error 
 		itemTerraList[i] = itemTerra
 	}
 	if err := d.Set("item", schema.NewSet(hashTemplateItem(), itemTerraList)); err != nil {
+		return err
+	}
+
+	triggers, err := api.TriggersGet(zabbix.Params{
+		"templateids": []string{d.Id()},
+	})
+	if err != nil {
+		return err
+	}
+
+	triggersTerraform := []interface{}{}
+	for _, trigger := range triggers {
+		triggerTerraform := make(map[string]interface{})
+
+		log.Printf("[DEBUG] Trigger data %#v", trigger)
+		triggerTerraform["trigger_id"] = trigger.TriggerID
+		triggerTerraform["description"] = trigger.Description
+		triggerTerraform["expression"] = trigger.Expression
+		triggerTerraform["comments"] = trigger.Comments
+		triggerTerraform["priority"] = trigger.Priority
+		triggerTerraform["status"] = trigger.Status
+		triggersTerraform = append(triggersTerraform, triggerTerraform)
+	}
+	if err := d.Set("trigger", schema.NewSet(hashTemplateTrigger(), triggersTerraform)); err != nil {
 		return err
 	}
 
@@ -302,6 +378,102 @@ func resourceZabbixTemplateUpdate(d *schema.ResourceData, meta interface{}) erro
 		}
 	}
 
+	if d.HasChange("trigger") {
+		log.Printf("[TRACE] template.trigger has changes")
+		oldT, newT := d.GetChange("trigger")
+		newTriggersTerraform := newT.(*schema.Set).List()
+		oldTriggersTerraform := oldT.(*schema.Set).List()
+		createdTriggers := zabbix.Triggers{}
+		deletedTriggers := zabbix.Triggers{}
+		updatedTriggers := zabbix.Triggers{}
+		marked := make(map[string]bool)
+
+		for _, newTriggerTerraform := range newTriggersTerraform {
+
+			trigger := zabbix.Trigger{
+				Description: newTriggerTerraform.(map[string]interface{})["description"].(string),
+				Expression:  newTriggerTerraform.(map[string]interface{})["expression"].(string),
+				Comments:    newTriggerTerraform.(map[string]interface{})["comment"].(string),
+				Priority:    zabbix.SeverityType(newTriggerTerraform.(map[string]interface{})["priority"].(int)),
+				Status:      zabbix.StatusType(newTriggerTerraform.(map[string]interface{})["status"].(int)),
+			}
+
+			// First pass on trigger description
+			for _, oldTriggerTerraform := range oldTriggersTerraform {
+				oldDescription := oldTriggerTerraform.(map[string]interface{})["description"].(string)
+				if marked[oldDescription] {
+					continue
+				}
+				if oldDescription == trigger.Description {
+					log.Printf("[DEBUG] Marked trigger for update (matches description): %#v => %#v", oldTriggerTerraform, newTriggerTerraform)
+					trigger.TriggerID = oldTriggerTerraform.(map[string]interface{})["trigger_id"].(string)
+					updatedTriggers = append(updatedTriggers, trigger)
+					marked[trigger.Description] = true
+					break
+				}
+			}
+
+			// Second pass on trigger expression
+			for _, oldTriggerTerraform := range oldTriggersTerraform {
+				oldDescription := oldTriggerTerraform.(map[string]interface{})["description"].(string)
+				if marked[oldDescription] {
+					continue
+				}
+				if oldTriggerTerraform.(map[string]interface{})["expression"] == trigger.Expression {
+					log.Printf("[DEBUG] Marked trigger for update (matches expression): %#v => %#v", oldTriggerTerraform, newTriggerTerraform)
+					trigger.TriggerID = oldTriggerTerraform.(map[string]interface{})["trigger_id"].(string)
+					updatedTriggers = append(updatedTriggers, trigger)
+					marked[trigger.Description] = true
+					marked[oldDescription] = true
+					break
+				}
+			}
+
+			// New item not marked is considered created
+			if !marked[trigger.TriggerID] {
+				log.Printf("[DEBUG] Marked trigger for creation: %#v", trigger)
+				createdTriggers = append(createdTriggers)
+			}
+		}
+
+		for _, oldTriggerTerraform := range oldTriggersTerraform {
+			// Old trigger not marked is considered removed
+			if marked[oldTriggerTerraform.(map[string]interface{})["description"].(string)] {
+				continue
+			}
+			trigger := zabbix.Trigger{
+				TriggerID:   oldTriggerTerraform.(map[string]interface{})["trigger_id"].(string),
+				Description: oldTriggerTerraform.(map[string]interface{})["description"].(string),
+				Expression:  oldTriggerTerraform.(map[string]interface{})["expression"].(string),
+				Comments:    oldTriggerTerraform.(map[string]interface{})["comment"].(string),
+				Priority:    zabbix.SeverityType(oldTriggerTerraform.(map[string]interface{})["priority"].(int)),
+				Status:      zabbix.StatusType(oldTriggerTerraform.(map[string]interface{})["status"].(int)),
+			}
+			deletedTriggers = append(deletedTriggers, trigger)
+		}
+
+		if len(createdTriggers) > 0 {
+			err := api.TriggersCreate(createdTriggers)
+			if err != nil {
+				return err
+			}
+		}
+
+		if len(updatedTriggers) > 0 {
+			err := api.TriggersUpdate(updatedTriggers)
+			if err != nil {
+				return err
+			}
+		}
+
+		if len(deletedTriggers) > 0 {
+			err := api.TriggersDelete(deletedTriggers)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return resourceZabbixTemplateRead(d, meta)
 }
 
@@ -309,4 +481,22 @@ func resourceZabbixTemplateDelete(d *schema.ResourceData, meta interface{}) erro
 	api := meta.(*zabbix.API)
 
 	return api.TemplatesDeleteByIds([]string{d.Id()})
+}
+
+func createTemplateTrigger(d *schema.ResourceData, api *zabbix.API) error {
+	terraformTriggers := d.Get("trigger").(*schema.Set).List()
+	createdTriggers := zabbix.Triggers{}
+
+	for _, terraformTrigger := range terraformTriggers {
+		value := terraformTrigger.(map[string]interface{})
+		trigger := zabbix.Trigger{
+			Description: value["description"].(string),
+			Expression:  value["expression"].(string),
+			Comments:    value["comment"].(string),
+			Priority:    zabbix.SeverityType(value["priority"].(int)),
+			Status:      zabbix.StatusType(value["status"].(int)),
+		}
+		createdTriggers = append(createdTriggers, trigger)
+	}
+	return api.TriggersCreate(createdTriggers)
 }
