@@ -40,6 +40,7 @@ func Provider() terraform.ResourceProvider {
 			"zabbix_trigger":       resourceZabbixTrigger(),
 			"zabbix_template":      resourceZabbixTemplate(),
 			"zabbix_template_link": resourceZabbixTemplateLink(),
+			"zabbix_lld_rule":      resourceZabbixlldRule(),
 		},
 	}
 
