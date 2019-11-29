@@ -57,6 +57,9 @@ resource "zabbix_template_link" "base_linux_general_link" {
       trigger_id = trigger.value
     }
   }
+  lld_rule {
+    lld_rule_id = zabbix_lld_rule.test_lld_rule.id
+  }
 }
 
 resource "zabbix_template" "base_linux_network" {

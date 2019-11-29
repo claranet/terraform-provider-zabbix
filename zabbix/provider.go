@@ -34,13 +34,15 @@ func Provider() terraform.ResourceProvider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"zabbix_host":          resourceZabbixHost(),
-			"zabbix_host_group":    resourceZabbixHostGroup(),
-			"zabbix_item":          resourceZabbixItem(),
-			"zabbix_trigger":       resourceZabbixTrigger(),
-			"zabbix_template":      resourceZabbixTemplate(),
-			"zabbix_template_link": resourceZabbixTemplateLink(),
-			"zabbix_lld_rule":      resourceZabbixlldRule(),
+			"zabbix_host":              resourceZabbixHost(),
+			"zabbix_host_group":        resourceZabbixHostGroup(),
+			"zabbix_item":              resourceZabbixItem(),
+			"zabbix_trigger":           resourceZabbixTrigger(),
+			"zabbix_template":          resourceZabbixTemplate(),
+			"zabbix_template_link":     resourceZabbixTemplateLink(),
+			"zabbix_lld_rule":          resourceZabbixlldRule(),
+			"zabbix_item_prototype":    resourceZabbixItemPrototype(),
+			"zabbix_trigger_prototype": resourceZabbixTriggerPrototype(),
 		},
 	}
 
