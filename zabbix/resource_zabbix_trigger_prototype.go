@@ -119,6 +119,7 @@ func resourceZabbixTriggerPrototypeExist(d *schema.ResourceData, meta interface{
 	_, err := api.TriggerPrototypeGetByID(d.Id())
 	if err != nil {
 		if strings.Contains(err.Error(), "Expected exactly one result") {
+			log.Printf("Trigger prototype with id %s doesn't exist", d.Id())
 			return false, nil
 		}
 		return false, err
@@ -143,32 +144,40 @@ func resourceZabbixTriggerPrototypeUpdate(d *schema.ResourceData, meta interface
 func resourceZabbixTriggerPrototypeDelete(d *schema.ResourceData, meta interface{}) error {
 	api := meta.(*zabbix.API)
 
-	// triggers, err := api.TriggerPrototypesGet(zabbix.Params{
-	// 	"ouput":       "extend",
-	// 	"selectHosts": "extend",
-	// 	"triggerids":  d.Id(),
-	// })
-	// if err != nil {
-	// 	return fmt.Errorf("%s, with trigger %s", err.Error(), d.Id())
-	// }
-	// if len(triggers) != 1 {
-	// 	return fmt.Errorf("Expected one item and got %d items", len(triggers))
-	// }
-	// trigger := triggers[0]
+	triggers, err := api.TriggerPrototypesGet(zabbix.Params{
+		"ouput":       "extend",
+		"selectHosts": "extend",
+		"triggerids":  d.Id(),
+	})
+	if err != nil {
+		return fmt.Errorf("%s, with trigger %s", err.Error(), d.Id())
+	}
+	if len(triggers) != 1 {
+		return fmt.Errorf("Expected one item and got %d items", len(triggers))
+	}
+	trigger := triggers[0]
 
-	// templates, err := api.TemplatesGet(zabbix.Params{
-	// 	"output":            "extend",
-	// 	"parentTemplateids": trigger.ParentHosts[0].HostID,
-	// })
+	templates, err := api.TemplatesGet(zabbix.Params{
+		"output":            "extend",
+		"selectHosts":       "extends",
+		"parentTemplateids": trigger.ParentHosts[0].HostID,
+	})
+	if err != nil {
+		return err
+	}
 
-	// triggerids, err := api.TriggersDeleteIDs([]string{d.Id()})
-	// if err != nil {
-	// 	return fmt.Errorf("%s, with trigger %s", err.Error(), d.Id())
-	// }
-	// if len(triggerids) != len(templates)+1 {
-	// 	return fmt.Errorf("Expected to delete %d trigger and %d were delete", len(templates)+1, len(triggerids))
-	// }
-	_, err := api.TriggerPrototypesDeleteIDs([]string{d.Id()})
+	triggerNB := 1
+	for _, template := range templates {
+		triggerNB += len(template.LinkedHosts) + 1
+	}
+
+	triggerids, err := api.TriggerPrototypesDeleteIDs([]string{d.Id()})
+	if err != nil {
+		return fmt.Errorf("%s, with trigger %s", err.Error(), d.Id())
+	}
+	if len(triggerids) != triggerNB {
+		return fmt.Errorf("Expected to delete %d trigger and %d were delete", triggerNB, len(triggerids))
+	}
 	return err
 }
 

@@ -129,13 +129,13 @@ func testAccCheckZabbixTemplateDestroy(s *terraform.State) error {
 	api := testAccProvider.Meta().(*zabbix.API)
 
 	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "zabbix_item" {
+		if rs.Type != "zabbix_template" {
 			continue
 		}
 
 		_, err := api.TemplateGetByID(rs.Primary.ID)
 		if err == nil {
-			return fmt.Errorf("Item still exist %s", rs.Primary.ID)
+			return fmt.Errorf("Template still exist %s", rs.Primary.ID)
 		}
 
 		expectedError := "Expected exactly one result, got 0."

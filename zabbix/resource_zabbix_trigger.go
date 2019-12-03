@@ -94,9 +94,15 @@ func resourceZabbixTriggerRead(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[DEBUG] trigger expression: %s", trigger.Expression)
 	d.Set("description", trigger.Description)
 	d.Set("expression", trigger.Expression)
-	d.Set("comment", trigger.Comments)
+	if trigger.Comments != "" {
+		d.Set("comment", trigger.Comments)
+	}
 	d.Set("priority", trigger.Priority)
-	d.Set("status", trigger.Status)
+	if trigger.Status != 0 {
+		d.Set("status", trigger.Status)
+	} else {
+		d.Set("value", 0)
+	}
 
 	var dependencies []string
 	for _, dependencie := range trigger.Dependencies {

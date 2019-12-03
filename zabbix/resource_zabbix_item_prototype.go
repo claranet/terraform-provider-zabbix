@@ -219,8 +219,8 @@ func resourceZabbixItemPrototypeExist(d *schema.ResourceData, meta interface{}) 
 
 	_, err := api.ItemPrototypeGetByID(d.Id())
 	if err != nil {
-		log.Printf("Item exist error : %s", err.Error())
 		if strings.Contains(err.Error(), "Expected exactly one result") {
+			log.Printf("Item prototype with id %s doesn't exist", d.Id())
 			return false, nil
 		}
 		return false, err
@@ -249,31 +249,39 @@ func resourceZabbixItemPrototypeUpdate(d *schema.ResourceData, meta interface{})
 func resourceZabbixItemPrototypeDelete(d *schema.ResourceData, meta interface{}) error {
 	api := meta.(*zabbix.API)
 
-	// items, err := api.ItemPrototypesGet(zabbix.Params{
-	// 	"output":      "extend",
-	// 	"selectHosts": "extend",
-	// 	"itemids":     d.Id(),
-	// })
-	// if err != nil {
-	// 	return fmt.Errorf("%s, with item %s", err.Error(), d.Id())
-	// }
-	// if len(items) != 1 {
-	// 	return fmt.Errorf("Expected one item and got %d items", len(items))
-	// }
-	// item := items[0]
+	items, err := api.ItemPrototypesGet(zabbix.Params{
+		"output":      "extend",
+		"selectHosts": "extend",
+		"itemids":     d.Id(),
+	})
+	if err != nil {
+		return fmt.Errorf("%s, with item %s", err.Error(), d.Id())
+	}
+	if len(items) != 1 {
+		return fmt.Errorf("Expected one item and got %d items", len(items))
+	}
+	item := items[0]
 
-	// templates, err := api.TemplatesGet(zabbix.Params{
-	// 	"ouput":             "extend",
-	// 	"parentTemplateids": item.ItemParent[0].HostID,
-	// })
+	templates, err := api.TemplatesGet(zabbix.Params{
+		"ouput":             "extend",
+		"selectHosts":       "extend",
+		"parentTemplateids": item.Hosts[0].HostID,
+	})
+	if err != nil {
+		return err
+	}
 
-	// itemids, err := api.ItemPrototypesDeleteIDs([]string{d.Id()})
-	// if err != nil {
-	// 	return err
-	// }
-	// if len(itemids) != len(templates)+1 {
-	// 	return fmt.Errorf("Expected to delete %d item and %d were delete", len(templates)+1, len(itemids))
-	// }
-	_, err := api.ItemPrototypesDeleteIDs([]string{d.Id()})
+	itemNB := 1
+	for _, template := range templates {
+		itemNB += len(template.LinkedHosts) + 1
+	}
+
+	itemids, err := api.ItemPrototypesDeleteIDs([]string{d.Id()})
+	if err != nil {
+		return err
+	}
+	if len(itemids) != itemNB {
+		return fmt.Errorf("Expected to delete %d item and %d were delete", itemNB, len(itemids))
+	}
 	return err
 }

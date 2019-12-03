@@ -112,13 +112,13 @@ func testAccCheckZabbixTriggerDestroy(s *terraform.State) error {
 	api := testAccProvider.Meta().(*zabbix.API)
 
 	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "zabbix_item" {
+		if rs.Type != "zabbix_trigger" {
 			continue
 		}
 
 		_, err := api.ItemGetByID(rs.Primary.ID)
 		if err == nil {
-			return fmt.Errorf("Item still exist %s", rs.Primary.ID)
+			return fmt.Errorf("Trigger still exist %s", rs.Primary.ID)
 		}
 
 		expectedError := "Expected exactly one result, got 0."
@@ -130,7 +130,7 @@ func testAccCheckZabbixTriggerDestroy(s *terraform.State) error {
 }
 
 func testAccZabbixTriggerSimpleConfig(strID string) string {
-	return fmt.Sprintf(`		
+	return fmt.Sprintf(`
 	resource "zabbix_host_group" "host_group_test" {
 		name = "host_group_%s"
 	}

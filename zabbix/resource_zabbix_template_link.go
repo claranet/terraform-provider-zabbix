@@ -18,13 +18,14 @@ func resourceZabbixTemplateLink() *schema.Resource {
 		Delete: resourceZabbixTemplateLinkDelete,
 		Importer: &schema.ResourceImporter{
 			State: func(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-				templateID, itemsID, triggersID, err := resourceZabbixTemplateLinkParseID(d.Id())
+				templateID, itemsID, triggersID, lldRuleID, err := resourceZabbixTemplateLinkParseID(d.Id())
 				if err != nil {
 					return nil, err
 				}
 				d.Set("item", itemsID)
 				d.Set("trigger", triggersID)
 				d.Set("template_id", templateID)
+				d.Set("lld_rule", lldRuleID)
 				d.SetId(randStringNumber(5))
 				return []*schema.ResourceData{d}, nil
 			}},
@@ -156,15 +157,15 @@ func resourceZabbixTemplateLinkExist(d *schema.ResourceData, meta interface{}) (
 func resourceZabbixTemplateLinkUpdate(d *schema.ResourceData, meta interface{}) error {
 	api := meta.(*zabbix.API)
 
-	err := updateZabbixTemplateItem(d, api)
+	err := updateZabbixTemplateItems(d, api)
 	if err != nil {
 		return err
 	}
-	err = updateZabbixTemplateTrigger(d, api)
+	err = updateZabbixTemplateTriggers(d, api)
 	if err != nil {
 		return err
 	}
-	err = updateZabbixTemplateDiscoveryRule(d, api)
+	err = updateZabbixTemplateDiscoveryRules(d, api)
 	if err != nil {
 		return err
 	}
@@ -368,7 +369,7 @@ func getTerraformTemplatelldRules(d *schema.ResourceData, api *zabbix.API) ([]in
 	return lldRulesTerraform, nil
 }
 
-func updateZabbixTemplateItem(d *schema.ResourceData, api *zabbix.API) error {
+func updateZabbixTemplateItems(d *schema.ResourceData, api *zabbix.API) error {
 	if d.HasChange("item") {
 		oldV, newV := d.GetChange("item")
 		oldItems := oldV.(*schema.Set).List()
@@ -425,7 +426,7 @@ func updateZabbixTemplateItem(d *schema.ResourceData, api *zabbix.API) error {
 	return nil
 }
 
-func updateZabbixTemplateTrigger(d *schema.ResourceData, api *zabbix.API) error {
+func updateZabbixTemplateTriggers(d *schema.ResourceData, api *zabbix.API) error {
 	if d.HasChange("trigger") {
 		oldV, newV := d.GetChange("trigger")
 		oldTriggers := oldV.(*schema.Set).List()
@@ -483,7 +484,7 @@ func updateZabbixTemplateTrigger(d *schema.ResourceData, api *zabbix.API) error 
 	return nil
 }
 
-func updateZabbixTemplateDiscoveryRule(d *schema.ResourceData, api *zabbix.API) error {
+func updateZabbixTemplateDiscoveryRules(d *schema.ResourceData, api *zabbix.API) error {
 	if d.HasChange("lld_rule") {
 		oldV, newV := d.GetChange("lld_rule")
 		oldlldRules := oldV.(*schema.Set).List()
@@ -541,15 +542,16 @@ func updateZabbixTemplateDiscoveryRule(d *schema.ResourceData, api *zabbix.API) 
 	return nil
 }
 
-func resourceZabbixTemplateLinkParseID(ID string) (templateID string, itemID []string, triggerID []string, err error) {
+func resourceZabbixTemplateLinkParseID(ID string) (templateID string, itemID []string, triggerID []string, lldRuleID []string, err error) {
 	parseID := strings.Split(ID, "_")
-	if len(parseID) != 3 {
-		err = fmt.Errorf(`Expected id format TEMPLATEID_ITEMID_TRIGGERID,
-		if you have multiple ITEMID and TRIGGERID use "." to separate the id`)
+	if len(parseID) != 4 {
+		err = fmt.Errorf(`Expected id format TEMPLATEID_ITEMID_TRIGGERID_LLDRULEID,
+		if you have multiple ITEMID, TRIGGERID or LLDRULEID use "." to separate the id`)
 		return
 	}
 	templateID = parseID[0]
 	itemID = strings.Split(parseID[1], ".")
 	triggerID = strings.Split(parseID[2], ".")
+	lldRuleID = strings.Split(parseID[3], ".")
 	return
 }

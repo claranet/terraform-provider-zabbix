@@ -18,7 +18,6 @@ func TestAccZabbixlldRule_Basic(t *testing.T) {
 			{
 				Config: testAccZabbixlldRuleConfig(),
 				Check: resource.ComposeTestCheckFunc(
-					// printastat(),
 					resource.TestCheckResourceAttr("zabbix_lld_rule.lld_rule_test", "delay", "60"),
 					resource.TestCheckResourceAttr("zabbix_lld_rule.lld_rule_test", "interface_id", "0"),
 					resource.TestCheckResourceAttr("zabbix_lld_rule.lld_rule_test", "key", "key.lolo"),
@@ -31,6 +30,20 @@ func TestAccZabbixlldRule_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr("zabbix_lld_rule.lld_rule_test", "filter.3189296381.condition.23998414.operator", "8"),
 				),
 			},
+			{
+				Config: testAccZabbixlldRuleUpdateConfig(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("zabbix_lld_rule.lld_rule_test", "delay", "90"),
+					resource.TestCheckResourceAttr("zabbix_lld_rule.lld_rule_test", "interface_id", "0"),
+					resource.TestCheckResourceAttr("zabbix_lld_rule.lld_rule_test", "key", "key.update"),
+					resource.TestCheckResourceAttr("zabbix_lld_rule.lld_rule_test", "name", "test_low_level_discovery_rule_update"),
+					resource.TestCheckResourceAttr("zabbix_lld_rule.lld_rule_test", "type", "0"),
+					resource.TestCheckResourceAttr("zabbix_lld_rule.lld_rule_test", "filter.#", "1"),
+					resource.TestCheckResourceAttr("zabbix_lld_rule.lld_rule_test", "filter.1755271774.#", "0"),
+					resource.TestCheckResourceAttr("zabbix_lld_rule.lld_rule_test", "filter.1755271774.condition.1739239139.macro", "{#UPDATE}"),
+					resource.TestCheckResourceAttr("zabbix_lld_rule.lld_rule_test", "filter.1755271774.condition.1739239139.value", "^lo$"),
+				),
+			},
 		},
 	})
 }
@@ -39,13 +52,13 @@ func testAccCheckZabbixlldRuleDestroy(s *terraform.State) error {
 	api := testAccProvider.Meta().(*zabbix.API)
 
 	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "zabbix_item" {
+		if rs.Type != "zabbix_lld_rule" {
 			continue
 		}
 
 		_, err := api.ItemGetByID(rs.Primary.ID)
 		if err == nil {
-			return fmt.Errorf("Item still exist %s", rs.Primary.ID)
+			return fmt.Errorf("LLD rule still exist %s", rs.Primary.ID)
 		}
 
 		expectedError := "Expected exactly one result, got 0."
@@ -87,13 +100,32 @@ func testAccZabbixlldRuleConfig() string {
 	`)
 }
 
-func printastat() resource.TestCheckFunc {
-	return func(state *terraform.State) error {
-		rs, ok := state.RootModule().Resources["zabbix_lld_rule.lld_rule_test"]
-
-		if !ok {
-			return fmt.Errorf("pas ok")
+func testAccZabbixlldRuleUpdateConfig() string {
+	return fmt.Sprintf(`
+		resource "zabbix_host_group" "zabbix" {
+			name = "host group test"
 		}
-		return fmt.Errorf("resourde %#v", rs.Primary)
-	}
+
+		resource "zabbix_template" "template_test" {
+			host = "template_test"
+			groups = ["${zabbix_host_group.zabbix.name}"]
+			name = "display name for template test"
+	  	}
+	  
+		resource "zabbix_lld_rule" "lld_rule_test" {
+			delay = 90
+			host_id = zabbix_template.template_test.id
+			interface_id = "0"
+			key = "key.update"
+			name = "test_low_level_discovery_rule_update"
+			type = 0
+			filter {
+				condition {
+					macro = "{#UPDATE}"
+					value = "^lo$"
+				}
+				eval_type = 0
+			}
+		}
+	`)
 }
