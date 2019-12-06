@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/claranet/go-zabbix-api"
-	"github.com/hashicorp/terraform/helper/resource"
-	"github.com/hashicorp/terraform/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 )
 
 func TestAccZabbixItemPrototype_Basic(t *testing.T) {

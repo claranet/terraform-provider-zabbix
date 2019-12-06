@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/claranet/go-zabbix-api"
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
 func resourceZabbixItemPrototype() *schema.Resource {
@@ -26,7 +26,7 @@ func resourceZabbixItemPrototype() *schema.Resource {
 				Description: "(readonly) ID of the item prototype.",
 			},
 			"delay": &schema.Schema{
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Optional: true,
 			},
 			"host_id": &schema.Schema{
@@ -109,13 +109,13 @@ func resourceZabbixItemPrototype() *schema.Resource {
 				Default:     "",
 			},
 			"history": &schema.Schema{
-				Type:        schema.TypeInt,
+				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "Number of days to keep item's history data. Default: 90. ",
 				Default:     "90",
 			},
 			"trends": &schema.Schema{
-				Type:        schema.TypeInt,
+				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "Number of days to keep item's trends data. Default: 365. ",
 				Default:     "365",
@@ -139,7 +139,7 @@ func createItemPrototypeObject(d *schema.ResourceData, api *zabbix.API) (*zabbix
 
 	item := zabbix.ItemPrototype{
 		ItemID:       d.Get("item_id").(string),
-		Delay:        d.Get("delay").(int),
+		Delay:        d.Get("delay").(string),
 		HostID:       d.Get("host_id").(string),
 		InterfaceID:  d.Get("interface_id").(string),
 		Key:          d.Get("key").(string),
@@ -150,8 +150,8 @@ func createItemPrototypeObject(d *schema.ResourceData, api *zabbix.API) (*zabbix
 		DataType:     zabbix.DataType(d.Get("data_type").(int)),
 		Delta:        zabbix.DeltaType(d.Get("delta").(int)),
 		Description:  d.Get("description").(string),
-		History:      d.Get("history").(int),
-		Trends:       d.Get("trends").(int),
+		History:      d.Get("history").(string),
+		Trends:       d.Get("trends").(string),
 		TrapperHosts: d.Get("trapper_host").(string),
 		Status:       d.Get("status").(int),
 	}

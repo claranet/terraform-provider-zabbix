@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/claranet/go-zabbix-api"
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
 func resourceZabbixlldRuleLink() *schema.Resource {
