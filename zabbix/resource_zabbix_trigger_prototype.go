@@ -20,11 +20,6 @@ func resourceZabbixTriggerPrototype() *schema.Resource {
 			State: schema.ImportStatePassthrough,
 		},
 		Schema: map[string]*schema.Schema{
-			"trigger_id": &schema.Schema{
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "(readonly) ID of the trigger",
-			},
 			"description": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
@@ -68,15 +63,9 @@ func resourceZabbixTriggerPrototype() *schema.Resource {
 }
 
 func resourceZabbixTriggerPrototypeCreate(d *schema.ResourceData, meta interface{}) error {
-	api := meta.(*zabbix.API)
+	trigger := createTriggerPrototypeObj(d)
 
-	triggers := zabbix.TriggerPrototypes{createTriggerPrototypeObj(d)}
-	err := api.TriggerPrototypesCreate(triggers)
-	if err != nil {
-		return err
-	}
-	d.SetId(triggers[0].TriggerID)
-	return resourceZabbixTriggerPrototypeRead(d, meta)
+	return createRetry(d, meta, createTriggerPrototype, trigger, resourceZabbixTriggerPrototypeRead)
 }
 
 func resourceZabbixTriggerPrototypeRead(d *schema.ResourceData, meta interface{}) error {
@@ -98,7 +87,6 @@ func resourceZabbixTriggerPrototypeRead(d *schema.ResourceData, meta interface{}
 	}
 	trigger := res[0]
 	err = getTriggerPrototypeExpression(&trigger, api)
-	d.Set("trigger_id", trigger.TriggerID)
 	log.Printf("[DEBUG] trigger expression: %s", trigger.Expression)
 	d.Set("description", trigger.Description)
 	d.Set("expression", trigger.Expression)
@@ -128,57 +116,18 @@ func resourceZabbixTriggerPrototypeExist(d *schema.ResourceData, meta interface{
 }
 
 func resourceZabbixTriggerPrototypeUpdate(d *schema.ResourceData, meta interface{}) error {
-	api := meta.(*zabbix.API)
-
-	triggers := zabbix.TriggerPrototypes{createTriggerPrototypeObj(d)}
+	trigger := createTriggerPrototypeObj(d)
+	trigger.TriggerID = d.Id()
 	if !d.HasChange("dependencies") {
-		triggers[0].Dependencies = nil
+		trigger.Dependencies = nil
 	}
-	err := api.TriggerPrototypesUpdate(triggers)
-	if err != nil {
-		return err
-	}
-	return resourceZabbixTriggerPrototypeRead(d, meta)
+	return createRetry(d, meta, updateTriggerPrototype, trigger, resourceZabbixTriggerPrototypeRead)
 }
 
 func resourceZabbixTriggerPrototypeDelete(d *schema.ResourceData, meta interface{}) error {
 	api := meta.(*zabbix.API)
 
-	triggers, err := api.TriggerPrototypesGet(zabbix.Params{
-		"ouput":       "extend",
-		"selectHosts": "extend",
-		"triggerids":  d.Id(),
-	})
-	if err != nil {
-		return fmt.Errorf("%s, with trigger %s", err.Error(), d.Id())
-	}
-	if len(triggers) != 1 {
-		return fmt.Errorf("Expected one item and got %d items", len(triggers))
-	}
-	trigger := triggers[0]
-
-	templates, err := api.TemplatesGet(zabbix.Params{
-		"output":            "extend",
-		"selectHosts":       "extends",
-		"parentTemplateids": trigger.ParentHosts[0].HostID,
-	})
-	if err != nil {
-		return err
-	}
-
-	triggerNB := 1
-	for _, template := range templates {
-		triggerNB += len(template.LinkedHosts) + 1
-	}
-
-	triggerids, err := api.TriggerPrototypesDeleteIDs([]string{d.Id()})
-	if err != nil {
-		return fmt.Errorf("%s, with trigger %s", err.Error(), d.Id())
-	}
-	if len(triggerids) != triggerNB {
-		return fmt.Errorf("Expected to delete %d trigger and %d were delete", triggerNB, len(triggerids))
-	}
-	return err
+	return deleteRetry(d.Id(), getTriggerPrototypeParentID, api.TriggerPrototypesDeleteIDs, api)
 }
 
 func createTriggerPrototypeDependencies(d *schema.ResourceData) zabbix.TriggerPrototypes {
@@ -194,7 +143,6 @@ func createTriggerPrototypeDependencies(d *schema.ResourceData) zabbix.TriggerPr
 
 func createTriggerPrototypeObj(d *schema.ResourceData) zabbix.TriggerPrototype {
 	return zabbix.TriggerPrototype{
-		TriggerID:    d.Get("trigger_id").(string),
 		Description:  d.Get("description").(string),
 		Expression:   d.Get("expression").(string),
 		Priority:     zabbix.SeverityType(d.Get("priority").(int)),
@@ -227,4 +175,44 @@ func getTriggerPrototypeExpression(trigger *zabbix.TriggerPrototype, api *zabbix
 		trigger.Expression = strings.Replace(trigger.Expression, idstr, expendValue, 1)
 	}
 	return nil
+}
+
+func getTriggerPrototypeParentID(api *zabbix.API, id string) (string, error) {
+	triggers, err := api.TriggerPrototypesGet(zabbix.Params{
+		"ouput":       "extend",
+		"selectHosts": "extend",
+		"triggerids":  id,
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(triggers) != 1 {
+		return "", fmt.Errorf("Expected one trigger prototype and got %d trigger prototype", len(triggers))
+	}
+	if len(triggers[0].ParentHosts) != 1 {
+		return "", fmt.Errorf("Expected one parent for trigger prototype %s and got %d", id, len(triggers[0].ParentHosts))
+	}
+	return triggers[0].ParentHosts[0].HostID, nil
+}
+
+func createTriggerPrototype(trigger interface{}, api *zabbix.API) (id string, err error) {
+	triggers := zabbix.TriggerPrototypes{trigger.(zabbix.TriggerPrototype)}
+
+	err = api.TriggerPrototypesCreate(triggers)
+	if err != nil {
+		return
+	}
+	id = triggers[0].TriggerID
+	return
+}
+
+func updateTriggerPrototype(trigger interface{}, api *zabbix.API) (id string, err error) {
+	triggers := zabbix.TriggerPrototypes{trigger.(zabbix.TriggerPrototype)}
+
+	err = api.TriggerPrototypesUpdate(triggers)
+	if err != nil {
+		return
+	}
+	id = triggers[0].TriggerID
+	return
 }

@@ -21,7 +21,7 @@ func resourceZabbixlldRule() *schema.Resource {
 		},
 		Schema: map[string]*schema.Schema{
 			"delay": &schema.Schema{
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Required: true,
 			},
 			"host_id": &schema.Schema{
@@ -95,16 +95,9 @@ func resourcelldRuleFilterCondition() *schema.Resource {
 }
 
 func resourceZabbixlldRuleCreate(d *schema.ResourceData, meta interface{}) error {
-	api := meta.(*zabbix.API)
 	rule := createlldRuleObject(d)
-	rules := zabbix.LLDRules{rule}
 
-	err := api.DiscoveryRulesCreate(rules)
-	if err != nil {
-		return err
-	}
-	d.SetId(rules[0].ItemID)
-	return resourceZabbixlldRuleRead(d, meta)
+	return createRetry(d, meta, createlldRule, rule, resourceZabbixlldRuleRead)
 }
 
 func resourceZabbixlldRuleRead(d *schema.ResourceData, meta interface{}) error {
@@ -166,16 +159,10 @@ func resourceZabbixlldRuleExist(d *schema.ResourceData, meta interface{}) (bool,
 }
 
 func resourceZabbixlldRuleUpdate(d *schema.ResourceData, meta interface{}) error {
-	api := meta.(*zabbix.API)
 	rule := createlldRuleObject(d)
-	rule.ItemID = d.Id()
-	rules := zabbix.LLDRules{rule}
 
-	err := api.DiscoveryRulesUpdate(rules)
-	if err != nil {
-		return err
-	}
-	return resourceZabbixlldRuleRead(d, meta)
+	rule.ItemID = d.Id()
+	return createRetry(d, meta, updatelldRule, rule, resourceZabbixlldRuleRead)
 }
 
 func resourceZabbixlldRuleDelete(d *schema.ResourceData, meta interface{}) error {
@@ -187,7 +174,7 @@ func resourceZabbixlldRuleDelete(d *schema.ResourceData, meta interface{}) error
 
 func createlldRuleObject(d *schema.ResourceData) zabbix.LLDRule {
 	return zabbix.LLDRule{
-		Delay:       d.Get("delay").(int),
+		Delay:       d.Get("delay").(string),
 		HostID:      d.Get("host_id").(string),
 		InterfaceID: d.Get("interface_id").(string),
 		Key:         d.Get("key").(string),
@@ -215,4 +202,26 @@ func createlldRuleConditionObject(d *schema.ResourceData) zabbix.LLDRuleFilter {
 		filterObject.Conditions = append(filterObject.Conditions, cond)
 	}
 	return filterObject
+}
+
+func createlldRule(rule interface{}, api *zabbix.API) (id string, err error) {
+	rules := zabbix.LLDRules{rule.(zabbix.LLDRule)}
+
+	err = api.DiscoveryRulesCreate(rules)
+	if err != nil {
+		return
+	}
+	id = rules[0].ItemID
+	return
+}
+
+func updatelldRule(rule interface{}, api *zabbix.API) (id string, err error) {
+	rules := zabbix.LLDRules{rule.(zabbix.LLDRule)}
+
+	err = api.DiscoveryRulesUpdate(rules)
+	if err != nil {
+		return
+	}
+	id = rules[0].ItemID
+	return
 }

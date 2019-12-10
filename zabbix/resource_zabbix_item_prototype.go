@@ -7,6 +7,7 @@ import (
 
 	"github.com/claranet/go-zabbix-api"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/mcuadros/go-version"
 )
 
 func resourceZabbixItemPrototype() *schema.Resource {
@@ -20,11 +21,6 @@ func resourceZabbixItemPrototype() *schema.Resource {
 			State: schema.ImportStatePassthrough,
 		},
 		Schema: map[string]*schema.Schema{
-			"item_id": &schema.Schema{
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "(readonly) ID of the item prototype.",
-			},
 			"delay": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
@@ -88,11 +84,12 @@ func resourceZabbixItemPrototype() *schema.Resource {
 					}
 					return
 				},
+				Description: "Remove in zabbix 3.4. Data type of the item prototype.",
 			},
 			"delta": &schema.Schema{
 				Type:        schema.TypeInt,
 				Optional:    true,
-				Description: "Value that will be stored. ",
+				Description: "Remove in zabbix 3.4. Value that will be stored.",
 				Default:     0,
 				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 					v := val.(int)
@@ -112,13 +109,23 @@ func resourceZabbixItemPrototype() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "Number of days to keep item's history data. Default: 90. ",
-				Default:     "90",
+				DefaultFunc: func() (interface{}, error) {
+					if version.Compare(zabbixAPIVersion, "3.4.0", ">=") {
+						return "90d", nil
+					}
+					return "90", nil
+				},
 			},
 			"trends": &schema.Schema{
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "Number of days to keep item's trends data. Default: 365. ",
-				Default:     "365",
+				DefaultFunc: func() (interface{}, error) {
+					if version.Compare(zabbixAPIVersion, "3.4.0", ">=") {
+						return "365d", nil
+					}
+					return "365", nil
+				},
 			},
 			"trapper_host": &schema.Schema{
 				Type:        schema.TypeString,
@@ -138,7 +145,6 @@ func resourceZabbixItemPrototype() *schema.Resource {
 func createItemPrototypeObject(d *schema.ResourceData, api *zabbix.API) (*zabbix.ItemPrototype, error) {
 
 	item := zabbix.ItemPrototype{
-		ItemID:       d.Get("item_id").(string),
 		Delay:        d.Get("delay").(string),
 		HostID:       d.Get("host_id").(string),
 		InterfaceID:  d.Get("interface_id").(string),
@@ -165,16 +171,8 @@ func resourceZabbixItemPrototypeCreate(d *schema.ResourceData, meta interface{})
 	if err != nil {
 		return err
 	}
-	items := zabbix.ItemPrototypes{*item}
 
-	err = api.ItemPrototypesCreate(items)
-	if err != nil {
-		return err
-	}
-
-	d.Set("item_id", items[0].ItemID)
-	d.SetId(items[0].ItemID)
-	return resourceZabbixItemPrototypeRead(d, meta)
+	return createRetry(d, meta, createItemPrototype, *item, resourceZabbixItemPrototypeRead)
 }
 
 func resourceZabbixItemPrototypeRead(d *schema.ResourceData, meta interface{}) error {
@@ -193,7 +191,6 @@ func resourceZabbixItemPrototypeRead(d *schema.ResourceData, meta interface{}) e
 	}
 	item := items[0]
 
-	d.Set("item_id", item.ItemID)
 	d.Set("delay", item.Delay)
 	d.Set("host_id", item.HostID)
 	d.Set("interface_id", item.InterfaceID)
@@ -235,53 +232,54 @@ func resourceZabbixItemPrototypeUpdate(d *schema.ResourceData, meta interface{})
 	if err != nil {
 		return err
 	}
-	items := zabbix.ItemPrototypes{*item}
 
-	log.Printf("[DEBUG] Update item prototype %#v", items)
-	err = api.ItemPrototypesUpdate(items)
-	if err != nil {
-		return err
-	}
-
-	return resourceZabbixItemPrototypeRead(d, meta)
+	item.ItemID = d.Id()
+	log.Printf("[DEBUG] Update item prototype %#v", item)
+	return createRetry(d, meta, updateItemPrototype, *item, resourceZabbixItemPrototypeRead)
 }
 
 func resourceZabbixItemPrototypeDelete(d *schema.ResourceData, meta interface{}) error {
 	api := meta.(*zabbix.API)
 
+	return deleteRetry(d.Id(), getItemPrototypeParentID, api.ItemPrototypesDeleteIDs, api)
+}
+
+func getItemPrototypeParentID(api *zabbix.API, id string) (string, error) {
 	items, err := api.ItemPrototypesGet(zabbix.Params{
 		"output":      "extend",
 		"selectHosts": "extend",
-		"itemids":     d.Id(),
+		"itemids":     id,
 	})
 	if err != nil {
-		return fmt.Errorf("%s, with item %s", err.Error(), d.Id())
+		return "", fmt.Errorf("%s, with item %s", err.Error(), id)
 	}
 	if len(items) != 1 {
-		return fmt.Errorf("Expected one item and got %d items", len(items))
+		return "", fmt.Errorf("Expected one item and got %d items", len(items))
 	}
-	item := items[0]
+	if len(items[0].Hosts) != 1 {
+		return "", fmt.Errorf("Expected one parent for item %s and got %d", id, len(items[0].Hosts))
+	}
+	return items[0].Hosts[0].HostID, nil
+}
 
-	templates, err := api.TemplatesGet(zabbix.Params{
-		"ouput":             "extend",
-		"selectHosts":       "extend",
-		"parentTemplateids": item.Hosts[0].HostID,
-	})
+func createItemPrototype(item interface{}, api *zabbix.API) (id string, err error) {
+	items := zabbix.ItemPrototypes{item.(zabbix.ItemPrototype)}
+
+	err = api.ItemPrototypesCreate(items)
 	if err != nil {
-		return err
+		return
 	}
+	id = items[0].ItemID
+	return
+}
 
-	itemNB := 1
-	for _, template := range templates {
-		itemNB += len(template.LinkedHosts) + 1
-	}
+func updateItemPrototype(item interface{}, api *zabbix.API) (id string, err error) {
+	items := zabbix.ItemPrototypes{item.(zabbix.ItemPrototype)}
 
-	itemids, err := api.ItemPrototypesDeleteIDs([]string{d.Id()})
+	err = api.ItemPrototypesUpdate(items)
 	if err != nil {
-		return err
+		return
 	}
-	if len(itemids) != itemNB {
-		return fmt.Errorf("Expected to delete %d item and %d were delete", itemNB, len(itemids))
-	}
-	return err
+	id = items[0].ItemID
+	return
 }

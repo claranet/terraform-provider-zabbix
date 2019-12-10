@@ -38,6 +38,8 @@ github.com/claranet/go-zabbix-api v0.3.2-0.20191204103848-82c7252c99d6 h1:0PN5bu
 github.com/claranet/go-zabbix-api v0.3.2-0.20191204103848-82c7252c99d6/go.mod h1:/Y2aKeFo5342GTp/glX2eU0xU4z0Uha4T2kOaQa6ggM=
 github.com/claranet/go-zabbix-api v0.3.2-0.20191210121956-67212984c55b h1:rZSFfvaE3Tq0KMh+fZOM56az3/RXt1YNAYqHQuBOohM=
 github.com/claranet/go-zabbix-api v0.3.2-0.20191210121956-67212984c55b/go.mod h1:/Y2aKeFo5342GTp/glX2eU0xU4z0Uha4T2kOaQa6ggM=
+github.com/claranet/go-zabbix-api v0.3.2-0.20191210151502-b1b02262329a h1:gAEOimiU4lG/iDTCYBIQXx8npQaCsDEDBL9IuNcz0Nk=
+github.com/claranet/go-zabbix-api v0.3.2-0.20191210151502-b1b02262329a/go.mod h1:/Y2aKeFo5342GTp/glX2eU0xU4z0Uha4T2kOaQa6ggM=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
