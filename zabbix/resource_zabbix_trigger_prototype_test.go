@@ -54,6 +54,43 @@ func TestAccZabbixTriggerPrototype_BasicDependencies(t *testing.T) {
 	})
 }
 
+func TestAccZabbixTriggerPrototype_ExpressionUpdate(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckZabbixItemPrototypeDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccZabbixTriggerPrototypeConfig(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("zabbix_trigger_prototype.trigger_prototype_test", "description", "trigger_prototype_test"),
+					resource.TestCheckResourceAttr("zabbix_trigger_prototype.trigger_prototype_test", "expression", "{template_test:test.key.last()}=0"),
+					resource.TestCheckResourceAttr("zabbix_trigger_prototype.trigger_prototype_test", "priority", "5"),
+					resource.TestCheckResourceAttr("zabbix_trigger_prototype.trigger_prototype_test", "status", "0"),
+				),
+			},
+			{
+				Config: testAccZabbixTriggerPrototypeUpdateKeyConfig(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("zabbix_trigger_prototype.trigger_prototype_test", "description", "trigger_prototype_test"),
+					resource.TestCheckResourceAttr("zabbix_trigger_prototype.trigger_prototype_test", "expression", "{template_test_update:test.key.last()}=0"),
+					resource.TestCheckResourceAttr("zabbix_trigger_prototype.trigger_prototype_test", "priority", "5"),
+					resource.TestCheckResourceAttr("zabbix_trigger_prototype.trigger_prototype_test", "status", "0"),
+				),
+			},
+			{
+				Config: testAccZabbixTriggerPrototypeUpdateKeyConfig2(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("zabbix_trigger_prototype.trigger_prototype_test", "description", "trigger_prototype_test"),
+					resource.TestCheckResourceAttr("zabbix_trigger_prototype.trigger_prototype_test", "expression", "{template_test_update:test.key.update.last()}=0"),
+					resource.TestCheckResourceAttr("zabbix_trigger_prototype.trigger_prototype_test", "priority", "5"),
+					resource.TestCheckResourceAttr("zabbix_trigger_prototype.trigger_prototype_test", "status", "0"),
+				),
+			},
+		},
+	})
+}
+
 func testAccCheckZabbixTriggerPrototypeDestroy(s *terraform.State) error {
 	api := testAccProvider.Meta().(*zabbix.API)
 
@@ -62,7 +99,7 @@ func testAccCheckZabbixTriggerPrototypeDestroy(s *terraform.State) error {
 			continue
 		}
 
-		_, err := api.ItemGetByID(rs.Primary.ID)
+		_, err := api.TriggerPrototypeGetByID(rs.Primary.ID)
 		if err == nil {
 			return fmt.Errorf("Trigger prototype still exist %s", rs.Primary.ID)
 		}
@@ -223,6 +260,100 @@ func testAccZabbixTriggerPrototypeDependenciesConfig() string {
 			dependencies = [
 				zabbix_trigger_prototype.trigger_prototype_test_0.id
 			]
+		}
+	`)
+}
+
+func testAccZabbixTriggerPrototypeUpdateKeyConfig() string {
+	return fmt.Sprintf(`
+		resource "zabbix_host_group" "zabbix" {
+			name = "host group test"
+		}
+
+		resource "zabbix_template" "template_test" {
+			host = "template_test_update"
+			groups = ["${zabbix_host_group.zabbix.name}"]
+			name = "display name for template test"
+	  	}
+
+		resource "zabbix_lld_rule" "lld_rule_test" {
+			delay = 60
+			host_id = zabbix_template.template_test.id
+			interface_id = "0"
+			key = "key.lolo"
+			name = "test_low_level_discovery_rule"
+			type = 0
+			filter {
+				condition {
+					macro = "{#TESTMACRO}"
+					value = "^lo$"
+				}
+				eval_type = 0
+			}
+		}
+
+		resource "zabbix_item_prototype" "item_prototype_test" {
+			delay = 60
+			host_id  = zabbix_template.template_test.id
+			rule_id = zabbix_lld_rule.lld_rule_test.id
+			interface_id = "0"
+			key = "test.key"
+			name = "item_prototype_test"
+			type = 0
+			status = 0
+		}
+
+		resource "zabbix_trigger_prototype" "trigger_prototype_test" {
+			description = "trigger_prototype_test"
+			expression = "{${zabbix_template.template_test.host}:${zabbix_item_prototype.item_prototype_test.key}.last()}=0"
+			priority = 5
+		}
+	`)
+}
+
+func testAccZabbixTriggerPrototypeUpdateKeyConfig2() string {
+	return fmt.Sprintf(`
+		resource "zabbix_host_group" "zabbix" {
+			name = "host group test"
+		}
+
+		resource "zabbix_template" "template_test" {
+			host = "template_test_update"
+			groups = ["${zabbix_host_group.zabbix.name}"]
+			name = "display name for template test"
+	  	}
+
+		resource "zabbix_lld_rule" "lld_rule_test" {
+			delay = 60
+			host_id = zabbix_template.template_test.id
+			interface_id = "0"
+			key = "key.lolo"
+			name = "test_low_level_discovery_rule"
+			type = 0
+			filter {
+				condition {
+					macro = "{#TESTMACRO}"
+					value = "^lo$"
+				}
+				eval_type = 0
+			}
+		}
+
+		resource "zabbix_item_prototype" "item_prototype_test" {
+			delay = 60
+			host_id  = zabbix_template.template_test.id
+			rule_id = zabbix_lld_rule.lld_rule_test.id
+			interface_id = "0"
+			key = "test.key.update"
+			name = "item_prototype_test"
+			type = 0
+			status = 0
+		}
+
+		resource "zabbix_trigger_prototype" "trigger_prototype_test" {
+			description = "trigger_prototype_test"
+			expression = "{${zabbix_template.template_test.host}:${zabbix_item_prototype.item_prototype_test.key}.last()}=0"
+			priority = 5
 		}
 	`)
 }

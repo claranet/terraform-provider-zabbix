@@ -49,7 +49,7 @@ func testAccCheckZabbixItemPrototypeDestroy(s *terraform.State) error {
 			continue
 		}
 
-		_, err := api.ItemGetByID(rs.Primary.ID)
+		_, err := api.ItemPrototypeGetByID(rs.Primary.ID)
 		if err == nil {
 			return fmt.Errorf("Item prototype still exist %s", rs.Primary.ID)
 		}
