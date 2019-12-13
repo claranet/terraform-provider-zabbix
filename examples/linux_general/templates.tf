@@ -57,9 +57,6 @@ resource "zabbix_template_link" "base_linux_general_link" {
       trigger_id = trigger.value
     }
   }
-  lld_rule {
-    lld_rule_id = zabbix_lld_rule.test_lld_rule.id
-  }
 }
 
 resource "zabbix_template" "base_linux_network" {
@@ -75,6 +72,19 @@ resource "zabbix_template_link" "base_linux_network_link" {
   }
   trigger {
     trigger_id = zabbix_trigger.proccess_ssh_server_is_down.id
+  }
+}
+
+resource "zabbix_template" "base_linux_filesystem" {
+  host = "Base_Linux_FileSystem"
+  groups = [zabbix_host_group.template_linux.name]
+}
+
+resource "zabbix_template_link" "base_linux_filesystem_link" {
+  template_id = zabbix_template.base_linux_filesystem.id
+
+  lld_rule {
+    lld_rule_id = zabbix_lld_rule.filesystem_discovery_rule.id
   }
 }
 
