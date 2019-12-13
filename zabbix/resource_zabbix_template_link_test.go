@@ -153,8 +153,6 @@ func testAccZabbixTemplateLinkConfig() string {
 			name = "item_test_0"
 			key = "bilou.bilou"
 			delay = "34"
-			trends = "300"
-			history = "25"
 			host_id = "${zabbix_template.template_test.id}"
 		}
 		
@@ -192,8 +190,6 @@ func testAccZabbixTemplateLinkDeleteTrigger() string {
 			name = "item_test_0"
 			key = "bilou.bilou"
 			delay = "34"
-			trends = "300"
-			history = "25"
 			host_id = "${zabbix_template.template_test.id}"
 		}
 

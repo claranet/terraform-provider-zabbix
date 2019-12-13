@@ -140,19 +140,15 @@ func testAccZabbixTriggerSimpleConfig(strID string) string {
 		groups = ["${zabbix_host_group.host_group_test.name}"]
 		description = "description for template"
 	  }
-  
+
 	resource "zabbix_item" "item_test" {
 		name = "name_%s"
 		key = "lili.lala"
 		delay = "34"
 		description = "description for item"
-		trends = "300"
-		history = "25"
-		delta = 1
-		type = 2
 		host_id = "${zabbix_template.template_test.id}"
 	}
-	
+
 	resource "zabbix_trigger" "trigger_test" {
 		description = "trigger_%s"
 		expression = "{${zabbix_template.template_test.host}:${zabbix_item.item_test.key}.last()}=0"
@@ -163,7 +159,7 @@ func testAccZabbixTriggerSimpleConfig(strID string) string {
 }
 
 func testAccZabbixTriggerSimpleConfigUpdate(strID string) string {
-	return fmt.Sprintf(`		
+	return fmt.Sprintf(`
 	resource "zabbix_host_group" "host_group_test" {
 		name = "host_group_%s"
 	}
@@ -173,19 +169,15 @@ func testAccZabbixTriggerSimpleConfigUpdate(strID string) string {
 		groups = ["${zabbix_host_group.host_group_test.name}"]
 		description = "description for template"
 	  }
-  
+
 	resource "zabbix_item" "item_test" {
 		name = "name_%s"
 		key = "lili.lala"
 		delay = "34"
 		description = "description for item"
-		trends = "300"
-		history = "25"
-		delta = 1
-		type = 2
 		host_id = "${zabbix_template.template_test.id}"
 	}
-	
+
 	resource "zabbix_trigger" "trigger_test" {
 		description = "update_trigger_%s"
 		expression = "{${zabbix_template.template_test.host}:${zabbix_item.item_test.key}.min(1)}=0"
@@ -196,7 +188,7 @@ func testAccZabbixTriggerSimpleConfigUpdate(strID string) string {
 }
 
 func testAccZabbixTriggerOmitEmpty(strID string) string {
-	return fmt.Sprintf(`		
+	return fmt.Sprintf(`
 	resource "zabbix_host_group" "host_group_test" {
 		name = "host_group_%s"
 	}
@@ -206,19 +198,15 @@ func testAccZabbixTriggerOmitEmpty(strID string) string {
 		groups = ["${zabbix_host_group.host_group_test.name}"]
 		description = "description for template"
 	  }
-  
+
 	resource "zabbix_item" "item_test" {
 		name = "name_%s"
 		key = "lili.lala"
 		delay = "34"
 		description = "description for item"
-		trends = "300"
-		history = "25"
-		delta = 1
-		type = 2
 		host_id = "${zabbix_template.template_test.id}"
 	}
-	
+
 	resource "zabbix_trigger" "trigger_test" {
 		description = "update_trigger_%s"
 		expression = "{${zabbix_template.template_test.host}:${zabbix_item.item_test.key}.min(1)}=0"
@@ -226,7 +214,7 @@ func testAccZabbixTriggerOmitEmpty(strID string) string {
 }
 
 func testAccZabbixTriggerMacroConfig(strID string) string {
-	return fmt.Sprintf(`		
+	return fmt.Sprintf(`
 	resource "zabbix_host_group" "host_group_test" {
 		name = "host_group_%s"
 	}
@@ -240,19 +228,15 @@ func testAccZabbixTriggerMacroConfig(strID string) string {
 			MACRO_UPDATE = "21m",
 		}
 	  }
-  
+
 	resource "zabbix_item" "item_test" {
 		name = "name_%s"
 		key = "lili.lala"
 		delay = "34"
 		description = "description for item"
-		trends = "300"
-		history = "25"
-		delta = 1
-		type = 2
 		host_id = "${zabbix_template.template_test.id}"
 	}
-	
+
 	resource "zabbix_trigger" "trigger_test" {
 		description = "trigger_%s"
 		expression = "{${zabbix_template.template_test.host}:${zabbix_item.item_test.key}.min({$MACRO_TRIGGER})}=0"
@@ -263,7 +247,7 @@ func testAccZabbixTriggerMacroConfig(strID string) string {
 }
 
 func testAccZabbixTriggerMacroConfigUpdate(strID string) string {
-	return fmt.Sprintf(`		
+	return fmt.Sprintf(`
 	resource "zabbix_host_group" "host_group_test" {
 		name = "host_group_%s"
 	}
@@ -277,19 +261,15 @@ func testAccZabbixTriggerMacroConfigUpdate(strID string) string {
 			MACRO_UPDATE = "21m",
 		}
 	  }
-  
+
 	resource "zabbix_item" "item_test" {
 		name = "name_%s"
 		key = "lili.lala"
 		delay = "34"
 		description = "description for item"
-		trends = "300"
-		history = "25"
-		delta = 1
-		type = 2
 		host_id = "${zabbix_template.template_test.id}"
 	}
-	
+
 	resource "zabbix_trigger" "trigger_test" {
 		description = "update_trigger_%s"
 		expression = "{${zabbix_template.template_test.host}:${zabbix_item.item_test.key}.min({$MACRO_UPDATE})}=0"
@@ -300,7 +280,7 @@ func testAccZabbixTriggerMacroConfigUpdate(strID string) string {
 }
 
 func testAccZabbixTriggerDependencies(strID string) string {
-	return fmt.Sprintf(`		
+	return fmt.Sprintf(`
 	resource "zabbix_host_group" "host_group_test" {
 		name = "host_group_%s"
 	}
@@ -310,19 +290,15 @@ func testAccZabbixTriggerDependencies(strID string) string {
 		groups = ["${zabbix_host_group.host_group_test.name}"]
 		description = "description for template"
 	  }
-  
+
 	resource "zabbix_item" "item_test" {
 		name = "name_%s"
 		key = "lili.lala"
 		delay = "34"
 		description = "description for item"
-		trends = "300"
-		history = "25"
-		delta = 1
-		type = 2
 		host_id = "${zabbix_template.template_test.id}"
 	}
-	
+
 	resource "zabbix_trigger" "trigger_test" {
 		description = "trigger_%s"
 		expression = "{${zabbix_template.template_test.host}:${zabbix_item.item_test.key}.last()}=0"
@@ -332,7 +308,7 @@ func testAccZabbixTriggerDependencies(strID string) string {
 		description = "trigger_2_%s"
 		expression = "{${zabbix_template.template_test.host}:${zabbix_item.item_test.key}.last()}=0"
 	}
-	
+
 	resource "zabbix_trigger" "trigger_test_3" {
 		description = "trigger_3_%s"
 		expression = "{${zabbix_template.template_test.host}:${zabbix_item.item_test.key}.last()}=0"

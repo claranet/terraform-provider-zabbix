@@ -33,7 +33,7 @@ func TestAccZabbixItemPrototype_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr("zabbix_item_prototype.item_prototype_test", "interface_id", "0"),
 					resource.TestCheckResourceAttr("zabbix_item_prototype.item_prototype_test", "key", "test.key.update"),
 					resource.TestCheckResourceAttr("zabbix_item_prototype.item_prototype_test", "name", "item_prototype_test_update"),
-					resource.TestCheckResourceAttr("zabbix_item_prototype.item_prototype_test", "type", "2"),
+					resource.TestCheckResourceAttr("zabbix_item_prototype.item_prototype_test", "type", "0"),
 					resource.TestCheckResourceAttr("zabbix_item_prototype.item_prototype_test", "status", "1"),
 				),
 			},
@@ -138,7 +138,7 @@ func testAccZabbixItemPrototypeUpdateConfig() string {
 			interface_id = "0"
 			key = "test.key.update"
 			name = "item_prototype_test_update"
-			type = 2
+			type = 0
 			status = 1
 		}
 	`)

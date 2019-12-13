@@ -29,8 +29,8 @@ func TestAccZabbixItem_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr("zabbix_item.my_item1", "key", "bilou.bilou"),
 					resource.TestCheckResourceAttr("zabbix_item.my_item1", "delay", "34"),
 					resource.TestCheckResourceAttr("zabbix_item.my_item1", "description", fmt.Sprintf("description for item : %s", itemName)),
-					resource.TestCheckResourceAttr("zabbix_item.my_item1", "trends", "300"),
-					resource.TestCheckResourceAttr("zabbix_item.my_item1", "history", "25"),
+					resource.TestCheckResourceAttr("zabbix_item.my_item1", "trends", "300d"),
+					resource.TestCheckResourceAttr("zabbix_item.my_item1", "history", "25d"),
 				),
 			},
 			{
@@ -41,8 +41,8 @@ func TestAccZabbixItem_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr("zabbix_item.my_item1", "key", "update.bilou.bilou"),
 					resource.TestCheckResourceAttr("zabbix_item.my_item1", "delay", "23"),
 					resource.TestCheckResourceAttr("zabbix_item.my_item1", "description", fmt.Sprintf("update description for item : %s", itemName)),
-					resource.TestCheckResourceAttr("zabbix_item.my_item1", "trends", "3"),
-					resource.TestCheckResourceAttr("zabbix_item.my_item1", "history", "2"),
+					resource.TestCheckResourceAttr("zabbix_item.my_item1", "trends", "3d"),
+					resource.TestCheckResourceAttr("zabbix_item.my_item1", "history", "2d"),
 				),
 			},
 		},
@@ -67,8 +67,8 @@ func testAccZabbixItemConfig(groupName string, templateName string, itemName str
 			key = "bilou.bilou"
 			delay = "34"
 			description = "description for item : %s"
-			trends = "300"
-			history = "25"
+			trends = "300d"
+			history = "25d"
 			host_id = "${zabbix_template.my_zbx_template.id}"
 	  	}
 	`, groupName, templateName, templateName, templateName, itemName, itemName)
@@ -92,8 +92,8 @@ func testAccZabbixItemUpdate(groupName string, templateName string, itemName str
 			key = "update.bilou.bilou"
 			delay = "23"
 			description = "update description for item : %s"
-			trends = "3"
-			history = "2"
+			trends = "3d"
+			history = "2d"
 			host_id = "${zabbix_template.my_zbx_template.id}"
 	  	}
 	`, groupName, templateName, templateName, templateName, itemName, itemName)
